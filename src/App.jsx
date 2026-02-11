@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { supabase } from "./utils/supabase";
 
 import Header from "./components/Header";
@@ -24,6 +24,7 @@ import Signup from "./pages/Signup";
 function App() {
   const [user, setUser] = React.useState(null);
   const [role, setRole] = React.useState("customer");
+  const [authResolved, setAuthResolved] = React.useState(false);
 
   const slides = [
     { image: "/img1.jpg", quote: "Art is the heartbeat of our local culture." },
@@ -32,26 +33,46 @@ function App() {
   ];
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", user.id)
-          .single();
-        setRole(data?.role || "customer");
+    let mounted = true;
+
+    const syncAuthState = async (session) => {
+      const sessionUser = session?.user || null;
+      if (!mounted) return;
+
+      setUser(sessionUser);
+
+      if (!sessionUser) {
+        setRole("customer");
+        setAuthResolved(true);
+        return;
       }
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", sessionUser.id)
+        .single();
+
+      if (!mounted) return;
+      setRole(data?.role || "customer");
+      setAuthResolved(true);
     };
 
-    getUser();
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user || null);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncAuthState(session);
     });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthResolved(false);
+      syncAuthState(session);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleLogout = async () => {
@@ -150,10 +171,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/profile" element={<Profile user={user} />} />
-        {role === "admin" && <Route path="/admin" element={<AdminPage />} />}
-        <Route path="/admin" element={<Login />} />
-        <Route path="/admin/*" element={<AdminPage />} />
-        <Route path="*" element={<Login />} />
+        <Route path="/admin" element={<AdminPage/>} />
       </Routes>
     </Router>
   );

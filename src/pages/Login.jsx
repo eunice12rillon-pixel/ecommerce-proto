@@ -10,22 +10,41 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for an active session [optional based on your flow]
-    const session = supabase.auth.getSession();
-    setUser(session.user);
+    const loadSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setUser(session?.user || null);
+    };
+
+    loadSession();
   }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     if (error) {
       alert(error.message);
     } else {
-      navigate("/");
+      const signedInUser = data?.user;
+
+      if (!signedInUser) {
+        navigate("/", { replace: true });
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", signedInUser.id)
+        .single();
+
+      navigate(profile?.role === "admin" ? "/admin" : "/", { replace: true });
     }
     setLoading(false);
   };

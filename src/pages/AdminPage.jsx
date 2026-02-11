@@ -81,7 +81,7 @@ export default function AdminPage({ user, role }) {
     description: "",
     category: "",
     price: "",
-    image: "",
+    image_url: "",
   });
 
   const fetchProducts = async () => {
@@ -130,7 +130,7 @@ export default function AdminPage({ user, role }) {
       description: "",
       category: "",
       price: "",
-      image: "",
+      image_url: "",
     });
 
     fetchProducts();
@@ -192,8 +192,8 @@ export default function AdminPage({ user, role }) {
             />
 
             <input
-              name="image"
-              value={formData.image}
+              name="image_url"
+              value={formData.image_url}
               onChange={handleChange}
               placeholder="Image URL"
               className="w-full border p-2 rounded"

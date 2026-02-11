@@ -73,7 +73,6 @@ export default function AdminPage({ user, role }) {
 
   const [activeSection, setActiveSection] = useState("overview");
 
-  // 🔥 PRODUCT STATES
   const [products, setProducts] = useState([]);
   const [editingId, setEditingId] = useState(null);
 
@@ -85,7 +84,6 @@ export default function AdminPage({ user, role }) {
     image: "",
   });
 
-  // 🔥 FETCH PRODUCTS (ONLY WHEN PRODUCT TAB ACTIVE)
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("products")
@@ -101,7 +99,6 @@ export default function AdminPage({ user, role }) {
     }
   }, [activeSection]);
 
-  // 🔥 FORM HANDLERS
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -149,7 +146,6 @@ export default function AdminPage({ user, role }) {
     setEditingId(product.id);
   };
 
-  // 🔥 RENDER SECTION CONTENT
   const renderContent = () => {
     if (activeSection === "products") {
       return (

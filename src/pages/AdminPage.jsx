@@ -1,5 +1,6 @@
 // src/pages/AdminPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
 import {
   FiUsers,
@@ -14,7 +15,22 @@ import {
   FiHome,
 } from "react-icons/fi";
 
-export default function AdminPage() {
+export default function AdminPage({user,role}) {
+
+  const navigate = useNavigate();
+
+   useEffect(() => {
+     if (!user || role !== "admin") {
+       navigate("/", { replace: true }); // Redirect non-admins to home
+     }
+   }, [user, role, navigate]);
+
+    if (!user || role !== "admin") {
+      return null;
+    }
+
+   
+
   const sections = [
     {
       key: "overview",

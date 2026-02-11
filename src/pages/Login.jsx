@@ -33,18 +33,36 @@ const Login = () => {
       const signedInUser = data?.user;
 
       if (!signedInUser) {
+        console.log("No user after login, navigating to /");
         navigate("/", { replace: true });
         setLoading(false);
         return;
       }
 
-      const { data: profile } = await supabase
+      console.log("Fetching profile for user ID:", signedInUser.id);
+      const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", signedInUser.id)
         .single();
 
-      navigate(profile?.role === "admin" ? "/admin" : "/", { replace: true });
+      if (profileError) {
+        console.error("Profile fetch error:", profileError);
+        alert("Error fetching profile: " + profileError.message);
+        navigate("/", { replace: true });
+        setLoading(false);
+        return;
+      }
+
+      console.log("Profile data:", profile);
+      console.log("Role:", profile?.role);
+
+      // Alternative 2: Store role in localStorage for persistence
+      const userRole = profile?.role || "customer";
+      localStorage.setItem("userRole", userRole);
+      const targetRoute = userRole === "admin" ? "/admin" : "/";
+      console.log("Navigating to:", targetRoute);
+      navigate(targetRoute, { replace: true });
     }
     setLoading(false);
   };

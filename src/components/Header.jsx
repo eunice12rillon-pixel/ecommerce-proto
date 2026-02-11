@@ -3,7 +3,7 @@ import { User, ShoppingCart } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import SearchBar from "./SearchBar";
 
-export default function Header({ user, onLogout }) {
+export default function Header({ user, onLogout, role }) {
   const navigate = useNavigate();
 
   return (
@@ -31,14 +31,15 @@ export default function Header({ user, onLogout }) {
             <ShoppingCart className="w-6 h-6 text-gray-600" />
           </button>
 
-          {/* Admin Login Icon */}
-          <button
-            className="p-2 hover:bg-gray-200 rounded-full"
-            onClick={() => navigate("/admin")}
-          >
-            <User className="w-5 h-5 text-gray-500" />
-          </button>
-          
+          {/* Admin Login Icon - Only show if role is admin */}
+          {role === "admin" && (
+            <button
+              className="p-2 hover:bg-gray-200 rounded-full"
+              onClick={() => navigate("/admin")}
+            >
+              <User className="w-5 h-5 text-gray-500" />
+            </button>
+          )}
 
           {/* Authentication Nav */}
           <nav>

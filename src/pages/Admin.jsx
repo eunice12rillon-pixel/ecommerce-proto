@@ -7,11 +7,12 @@ const Admin = ({ role }) => {
 
   useEffect(() => {
     if (role !== "admin") {
-      navigate("/");
+      navigate("/"); // Redirect to home if not an admin
     }
   }, [role, navigate]);
 
-  return <AdminPage />;
+  // Render the AdminPage, assuming this component is only used when the user is an admin
+  return role === "admin" ? <AdminPage /> : null; // Ensure nothing is rendered if not an admin
 };
 
 export default Admin;

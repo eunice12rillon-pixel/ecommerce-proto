@@ -31,11 +31,80 @@ function App() {
   const [user, setUser] = React.useState(null);
   const [role, setRole] = React.useState("customer");
   const [authResolved, setAuthResolved] = React.useState(false);
+  const [products, setProducts] = React.useState([]);
 
   const slides = [
     { image: "/img1.jpg", quote: "Art is the heartbeat of our local culture." },
     { image: "/img2.jpg", quote: "Every handmade piece tells a story." },
     { image: "/img3.jpg", quote: "Creativity connects communities." },
+  ];
+
+  // Hardcoded products that will always be available
+  const hardcodedProducts = [
+    {
+      id: "hardcoded-1",
+      image: "/paint-brush.webp",
+      name: "Premium Paint Brush Set",
+      description: "High-quality brushes for watercolor, acrylic & oil.",
+      category: "Painting Tools",
+      price: 550,
+    },
+    {
+      id: "hardcoded-2",
+      image: "/acrylic-set.webp",
+      name: "Acrylic Paint Set",
+      description: "Vibrant acrylic paints perfect for beginners & pros.",
+      category: "Painting Tools",
+      price: 799,
+    },
+    {
+      id: "hardcoded-3",
+      image: "/canvas-pack.webp",
+      name: "Canvas Panel Pack",
+      description: "Durable canvas panels for creative projects.",
+      category: "Canvas & Surfaces",
+      price: 650,
+    },
+    {
+      id: "hardcoded-4",
+      image: "/sketchbook.webp",
+      name: "Hardbound Sketchbook",
+      description: "Premium thick paper for sketching & drawing.",
+      category: "Paper & Sketch",
+      price: 450,
+    },
+    {
+      id: "hardcoded-5",
+      image: "/watercolor-set.webp",
+      name: "Watercolor Paint Set",
+      description: "Rich pigments with smooth blending capability.",
+      category: "Painting Tools",
+      price: 720,
+    },
+    {
+      id: "hardcoded-6",
+      image: "/palette.webp",
+      name: "Wooden Paint Palette",
+      description: "Ergonomic wooden palette for easy mixing.",
+      category: "Accessories",
+      price: 299,
+    },
+    {
+      id: "hardcoded-7",
+      image: "/easel.webp",
+      name: "Adjustable Wooden Easel",
+      description: "Stable and adjustable easel for studio use.",
+      category: "Studio Equipment",
+      price: 1499,
+    },
+    {
+      id: "hardcoded-8",
+      image: "/charcoal-set.webp",
+      name: "Charcoal Drawing Set",
+      description: "Professional charcoal sticks for deep shading.",
+      category: "Drawing Tools",
+      price: 399,
+    },
   ];
 
   useEffect(() => {
@@ -49,21 +118,28 @@ function App() {
 
       if (!sessionUser) {
         setRole("customer");
+        localStorage.removeItem("userRole");  // Clear stored role
         setAuthResolved(true);
         return;
       }
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", sessionUser.id)
-        .single();
+      // Try to get role from localStorage first (for persistence)
+      let userRole = localStorage.getItem("userRole");
+      if (!userRole) {
+        // Fetch from Supabase if not stored
+        const { data } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", sessionUser.id)
+          .single();
+        userRole = data?.role || "customer";
+        localStorage.setItem("userRole", userRole);  // Store it
+      }
 
       if (!mounted) return;
-      setRole(data?.role || "customer");
+      setRole(userRole);
       setAuthResolved(true);
     };
-    
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       syncAuthState(session);
@@ -82,123 +158,70 @@ function App() {
     };
   }, []);
 
+  // Fetch products from Supabase database and combine with hardcoded products
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        // Map database fields to match the expected format
+        const formattedProducts = data.map((product) => ({
+          id: product.id,
+          image: product.image_url,
+          name: product.name,
+          description: product.description,
+          category: product.category,
+          price: product.price,
+        }));
+        
+        // Combine hardcoded products with database products
+        // Database products appear first (newest first), then hardcoded products
+        setProducts([...formattedProducts, ...hardcodedProducts]);
+      } else {
+        // If there's an error or no database products, just use hardcoded ones
+        setProducts(hardcodedProducts);
+      }
+    };
+
+    fetchProducts();
+
+    // Subscribe to realtime changes
+    const subscription = supabase
+      .channel("products-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "products" },
+        () => {
+          fetchProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     setRole("customer");
+    localStorage.removeItem("userRole");
   };
 
-    if (!authResolved) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brown-700 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
+  if (!authResolved) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brown-700 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
-      );
-    }
-    const syncAuthState = async (session) => {
-  const sessionUser = session?.user || null;
-  if (!mounted) return;
-
-  setUser(sessionUser);
-
-  if (!sessionUser) {
-    setRole("customer");
-    localStorage.removeItem("userRole");  // Clear stored role
-    setAuthResolved(true);
-    return;
+      </div>
+    );
   }
-
-  // Try to get role from localStorage first (for persistence)
-  let userRole = localStorage.getItem("userRole");
-  if (!userRole) {
-    // Fetch from Supabase if not stored
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", sessionUser.id)
-      .single();
-    userRole = data?.role || "customer";
-    localStorage.setItem("userRole", userRole);  // Store it
-  }
-
-  setRole(userRole);
-  setAuthResolved(true);
-};
-
-
-
-  
-
-  // Include the products array here
-  const products = [
-    {
-      id: "1",
-      image: "/paint-brush.webp",
-      name: "Premium Paint Brush Set",
-      description: "High-quality brushes for watercolor, acrylic & oil.",
-      category: "Painting Tools",
-      price: 550,
-    },
-    {
-      id: "2",
-      image: "/acrylic-set.webp",
-      name: "Acrylic Paint Set",
-      description: "Vibrant acrylic paints perfect for beginners & pros.",
-      category: "Painting Tools",
-      price: 799,
-    },
-    {
-      id: "3",
-      image: "/canvas-pack.webp",
-      name: "Canvas Panel Pack",
-      description: "Durable canvas panels for creative projects.",
-      category: "Canvas & Surfaces",
-      price: 650,
-    },
-    {
-      id: "4",
-      image: "/sketchbook.webp",
-      name: "Hardbound Sketchbook",
-      description: "Premium thick paper for sketching & drawing.",
-      category: "Paper & Sketch",
-      price: 450,
-    },
-    {
-      id: "5",
-      image: "/watercolor-set.webp",
-      name: "Watercolor Paint Set",
-      description: "Rich pigments with smooth blending capability.",
-      category: "Painting Tools",
-      price: 720,
-    },
-    {
-      id: "6",
-      image: "/palette.webp",
-      name: "Wooden Paint Palette",
-      description: "Ergonomic wooden palette for easy mixing.",
-      category: "Accessories",
-      price: 299,
-    },
-    {
-      id: "7",
-      image: "/easel.webp",
-      name: "Adjustable Wooden Easel",
-      description: "Stable and adjustable easel for studio use.",
-      category: "Studio Equipment",
-      price: 1499,
-    },
-    {
-      id: "8",
-      image: "/charcoal-set.webp",
-      name: "Charcoal Drawing Set",
-      description: "Professional charcoal sticks for deep shading.",
-      category: "Drawing Tools",
-      price: 399,
-    },
-  ];
 
 return (
   <ToastProvider>
@@ -206,32 +229,36 @@ return (
       <Header user={user} onLogout={handleLogout} role={role} />
 
       <Routes>
-        {/* HOME PAGE - Accessible to everyone */}
-        <Route
-          path="/"
-          element={
-            <>
-              <ImageCarousel slides={slides} />
-              <InfoGrid />
+        {/* HOME PAGE - Only for customers */}
+        {role !== "admin" ? (
+          <Route
+            path="/"
+            element={
+              <>
+                <ImageCarousel slides={slides} />
+                <InfoGrid />
 
-              <div className="max-w-7xl mx-auto px-4 py-8">
-                <ProductsGrid products={products.slice(0, 4)} />
-              </div>
-
-              <CategoriesGrid />
-              <Testimonial />
-              <HowToBuy />
-              <PageWrapper>
-                <div className="mt-6">
-                  <p>Welcome to Artisan Alley!</p>
+                <div className="max-w-7xl mx-auto px-4 py-8">
+                  <ProductsGrid products={hardcodedProducts.slice(0, 4)} />
                 </div>
-              </PageWrapper>
-              <ContactUs />
-            </>
-          }
-        />
 
-        {/* PRODUCTS LIST PAGE - Only for customers (role !== "admin") */}
+                <CategoriesGrid />
+                <Testimonial />
+                <HowToBuy />
+                <PageWrapper>
+                  <div className="mt-6">
+                    <p>Welcome to Artisan Alley!</p>
+                  </div>
+                </PageWrapper>
+                <ContactUs />
+              </>
+            }
+          />
+        ) : (
+          <Route path="/" element={<Navigate to="/admin" replace />} />
+        )}
+
+        {/* PRODUCTS LIST PAGE - Only for customers */}
         {role !== "admin" && (
           <Route
             path="/products"
@@ -260,10 +287,11 @@ return (
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
-        {/* Fallback: Redirect admins away from any restricted or unmatched paths */}
-        {role === "admin" && (
-          <Route path="*" element={<Navigate to="/admin" replace />} />
-        )}
+        {/* Fallback: Redirect admins to /admin and customers to home */}
+        <Route 
+          path="*" 
+          element={<Navigate to={role === "admin" ? "/admin" : "/"} replace />} 
+        />
       </Routes>
     </Router>
   </ToastProvider>

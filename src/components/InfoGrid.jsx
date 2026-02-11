@@ -3,22 +3,22 @@ import { Star, Truck, Globe, Paintbrush } from "lucide-react";
 export default function InfoGrid() {
   const infoItems = [
     {
-      icon: <Star className="w-12 h-12 text-yellow-500" />,
+      icon: <Star className="w-9 h-9 text-yellow-500" />,
       title: "Top-rated",
       subtitle: "Local Artists & Collectors",
     },
     {
-      icon: <Truck className="w-12 h-12 text-blue-500" />,
+      icon: <Truck className="w-9 h-9 text-blue-500" />,
       title: "Free delivery",
       subtitle: "within Philippines",
     },
     {
-      icon: <Globe className="w-12 h-12 text-green-500" />,
+      icon: <Globe className="w-9 h-9 text-green-500" />,
       title: "Worldwide",
       subtitle: "Shipping",
     },
     {
-      icon: <Paintbrush className="w-12 h-12 text-purple-500" />,
+      icon: <Paintbrush className="w-9 h-9 text-purple-500" />,
       title: "Distinctively",
       subtitle: "Filipino Art",
     },

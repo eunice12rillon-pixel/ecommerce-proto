@@ -136,109 +136,137 @@ function App() {
   const products = [
     {
       id: "1",
-      image: "/paint-brush.jpg",
+      image: "/paint-brush.webp",
       name: "Premium Paint Brush Set",
-      description:
-        "High-quality brushes for watercolor, acrylic, and oil painting.",
-      variants: [
-        { id: "basic", name: "Basic Set", price: 550 },
-        { id: "advanced", name: "Advanced Set", price: 750 },
-        { id: "pro", name: "Professional Set", price: 950 },
-      ],
+      description: "High-quality brushes for watercolor, acrylic & oil.",
+      category: "Painting Tools",
+      price: 550,
     },
     {
       id: "2",
-      image: "/sketchbook.jpg",
-      name: "Hardcover Sketchbook",
-      description: "Perfect for drawing, sketching, and journaling.",
-      variants: [
-        { id: "a5", name: "A5 Size", price: 420 },
-        { id: "a4", name: "A4 Size", price: 620 },
-      ],
+      image: "/acrylic-set.webp",
+      name: "Acrylic Paint Set",
+      description: "Vibrant acrylic paints perfect for beginners & pros.",
+      category: "Painting Tools",
+      price: 799,
     },
     {
       id: "3",
-      image: "/acrylic-paint.jpg",
-      name: "Acrylic Paint Set (12 colors)",
-      description: "Vibrant colors suitable for all types of surfaces.",
-      variants: [
-        { id: "standard", name: "Standard Set", price: 850 },
-        { id: "premium", name: "Premium Set", price: 1200 },
-      ],
+      image: "/canvas-pack.webp",
+      name: "Canvas Panel Pack",
+      description: "Durable canvas panels for creative projects.",
+      category: "Canvas & Surfaces",
+      price: 650,
     },
     {
       id: "4",
-      image: "/charcoal-pencils.jpg",
-      name: "Charcoal Pencil Set",
-      description: "Set of 6 charcoal pencils for sketching and shading.",
-      variants: [
-        { id: "set6", name: "6 Pencils", price: 300 },
-        { id: "set12", name: "12 Pencils", price: 500 },
-      ],
+      image: "/sketchbook.webp",
+      name: "Hardbound Sketchbook",
+      description: "Premium thick paper for sketching & drawing.",
+      category: "Paper & Sketch",
+      price: 450,
+    },
+    {
+      id: "5",
+      image: "/watercolor-set.webp",
+      name: "Watercolor Paint Set",
+      description: "Rich pigments with smooth blending capability.",
+      category: "Painting Tools",
+      price: 720,
+    },
+    {
+      id: "6",
+      image: "/palette.webp",
+      name: "Wooden Paint Palette",
+      description: "Ergonomic wooden palette for easy mixing.",
+      category: "Accessories",
+      price: 299,
+    },
+    {
+      id: "7",
+      image: "/easel.webp",
+      name: "Adjustable Wooden Easel",
+      description: "Stable and adjustable easel for studio use.",
+      category: "Studio Equipment",
+      price: 1499,
+    },
+    {
+      id: "8",
+      image: "/charcoal-set.webp",
+      name: "Charcoal Drawing Set",
+      description: "Professional charcoal sticks for deep shading.",
+      category: "Drawing Tools",
+      price: 399,
     },
   ];
 
 return (
-  <Router>
-    <Header user={user} onLogout={handleLogout} role={role} />
+  <ToastProvider>
+    <Router>
+      <Header user={user} onLogout={handleLogout} role={role} />
 
-    <Routes>
-      {/* HOME PAGE - Accessible to everyone */}
-      <Route
-        path="/"
-        element={
-          <>
-            <ImageCarousel slides={slides} />
-            <InfoGrid />
-            <ProductsGrid products={products} />
-            <CategoriesGrid />
-            <Testimonial />
-            <HowToBuy />
-            <PageWrapper>
-              <div className="mt-6">
-                <p>Welcome to Artisan Alley!</p>
+      <Routes>
+        {/* HOME PAGE - Accessible to everyone */}
+        <Route
+          path="/"
+          element={
+            <>
+              <ImageCarousel slides={slides} />
+              <InfoGrid />
+
+              <div className="max-w-7xl mx-auto px-4 py-8">
+                <ProductsGrid products={products.slice(0, 4)} />
               </div>
-            </PageWrapper>
-            <ContactUs />
-          </>
-        }
-      />
 
-      {/* PRODUCTS LIST PAGE - Only for customers (role !== "admin") */}
-      {role !== "admin" && (
-        <Route
-          path="/products"
-          element={<ProductsPage products={products} />}
+              <CategoriesGrid />
+              <Testimonial />
+              <HowToBuy />
+              <PageWrapper>
+                <div className="mt-6">
+                  <p>Welcome to Artisan Alley!</p>
+                </div>
+              </PageWrapper>
+              <ContactUs />
+            </>
+          }
         />
-      )}
 
-      {/* SINGLE PRODUCT VIEW - Only for customers */}
-      {role !== "admin" && (
-        <Route
-          path="/products/:id"
-          element={<ProductView products={products} />}
-        />
-      )}
+        {/* PRODUCTS LIST PAGE - Only for customers (role !== "admin") */}
+        {role !== "admin" && (
+          <Route
+            path="/products"
+            element={<ProductsPage products={products} />}
+          />
+        )}
 
-      {/* CART PAGE - Only for customers */}
-      {role !== "admin" && <Route path="/cart" element={<CartPage />} />}
+        {/* SINGLE PRODUCT VIEW - Only for customers */}
+        {role !== "admin" && (
+          <Route
+            path="/products/:id"
+            element={<ProductView products={products} />}
+          />
+        )}
 
-      {/* PROFILE PAGE - Accessible to everyone (or restrict if needed) */}
-      <Route path="/profile" element={<Profile user={user} />} />
+        {/* CART PAGE - Only for customers */}
+        {role !== "admin" && <Route path="/cart" element={<CartPage />} />}
 
-      {/* ADMIN PAGE - Only for admins (already handled in AdminPage.jsx) */}
-      <Route path="/admin" element={<AdminPage user={user} role={role} />} />
+        {/* PROFILE PAGE - Accessible to everyone (or restrict if needed) */}
+        <Route path="/profile" element={<Profile user={user} />} />
 
-      {/* LOGIN/SIGNUP - Accessible to everyone */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+        {/* ADMIN PAGE - Only for admins (already handled in AdminPage.jsx) */}
+        <Route path="/admin" element={<AdminPage user={user} role={role} />} />
 
-      {/* Fallback: Redirect admins away from any restricted or unmatched paths */}
-      {role === "admin" && (
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      )}
-    </Routes>
-  </Router>
+        {/* LOGIN/SIGNUP - Accessible to everyone */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* Fallback: Redirect admins away from any restricted or unmatched paths */}
+        {role === "admin" && (
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        )}
+      </Routes>
+    </Router>
+  </ToastProvider>
 );
 }
 

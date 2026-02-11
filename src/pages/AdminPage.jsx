@@ -2,34 +2,29 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PageWrapper from "../components/PageWrapper";
+import { supabase } from "../utils/supabase";
 import {
   FiUsers,
   FiShoppingCart,
   FiBox,
   FiBarChart2,
-  FiSettings,
   FiMessageCircle,
   FiBell,
-  FiShield,
-  FiCalendar,
   FiHome,
 } from "react-icons/fi";
 
-export default function AdminPage({user,role}) {
-
+export default function AdminPage({ user, role }) {
   const navigate = useNavigate();
 
-   useEffect(() => {
-     if (!user || role !== "admin") {
-       navigate("/", { replace: true }); // Redirect non-admins to home
-     }
-   }, [user, role, navigate]);
-
+  useEffect(() => {
     if (!user || role !== "admin") {
-      return null;
+      navigate("/", { replace: true });
     }
+  }, [user, role, navigate]);
 
-   
+  if (!user || role !== "admin") {
+    return null;
+  }
 
   const sections = [
     {
@@ -45,7 +40,6 @@ export default function AdminPage({user,role}) {
       icon: <FiBox size={24} />,
       hoverColor: "hover:bg-green-200 hover:text-white",
       description: "Manage products, categories, inventory",
-      
     },
     {
       key: "analytics",
@@ -79,8 +73,191 @@ export default function AdminPage({user,role}) {
 
   const [activeSection, setActiveSection] = useState("overview");
 
+  // 🔥 PRODUCT STATES
+  const [products, setProducts] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    category: "",
+    price: "",
+    image: "",
+  });
+
+  // 🔥 FETCH PRODUCTS (ONLY WHEN PRODUCT TAB ACTIVE)
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error) setProducts(data);
+  };
+
+  useEffect(() => {
+    if (activeSection === "products") {
+      fetchProducts();
+    }
+  }, [activeSection]);
+
+  // 🔥 FORM HANDLERS
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (editingId) {
+      await supabase
+        .from("products")
+        .update({
+          ...formData,
+          price: Number(formData.price),
+        })
+        .eq("id", editingId);
+
+      setEditingId(null);
+    } else {
+      await supabase.from("products").insert([
+        {
+          ...formData,
+          price: Number(formData.price),
+        },
+      ]);
+    }
+
+    setFormData({
+      name: "",
+      description: "",
+      category: "",
+      price: "",
+      image: "",
+    });
+
+    fetchProducts();
+  };
+
+  const handleDelete = async (id) => {
+    await supabase.from("products").delete().eq("id", id);
+    fetchProducts();
+  };
+
+  const handleEdit = (product) => {
+    setFormData(product);
+    setEditingId(product.id);
+  };
+
+  // 🔥 RENDER SECTION CONTENT
   const renderContent = () => {
+    if (activeSection === "products") {
+      return (
+        <div className="p-4 bg-white rounded shadow mt-4">
+          <h2 className="text-lg font-semibold mb-4">Product Management</h2>
+
+          {/* ADD / EDIT FORM */}
+          <form onSubmit={handleSubmit} className="space-y-3 mb-6">
+            <input
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              placeholder="Product Name"
+              className="w-full border p-2 rounded"
+              required
+            />
+
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Description"
+              className="w-full border p-2 rounded"
+              required
+            />
+
+            <input
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              placeholder="Category"
+              className="w-full border p-2 rounded"
+              required
+            />
+
+            <input
+              type="number"
+              name="price"
+              value={formData.price}
+              onChange={handleChange}
+              placeholder="Price"
+              className="w-full border p-2 rounded"
+              required
+            />
+
+            <input
+              name="image"
+              value={formData.image}
+              onChange={handleChange}
+              placeholder="Image URL"
+              className="w-full border p-2 rounded"
+              required
+            />
+
+            <button className="bg-black text-white px-6 py-2 rounded">
+              {editingId ? "Update Product" : "Add Product"}
+            </button>
+          </form>
+
+          {/* PRODUCT TABLE */}
+          <table className="w-full border text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="p-2">Image</th>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Category</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.id} className="border-t text-center">
+                  <td>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-12 mx-auto"
+                    />
+                  </td>
+                  <td>{product.name}</td>
+                  <td>₱{product.price}</td>
+                  <td>{product.category}</td>
+                  <td className="space-x-2">
+                    <button
+                      onClick={() => handleEdit(product)}
+                      className="bg-blue-500 text-white px-2 py-1 rounded"
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(product.id)}
+                      className="bg-red-500 text-white px-2 py-1 rounded"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+
     const section = sections.find((s) => s.key === activeSection);
+
     return (
       <div className="p-4 bg-white rounded shadow mt-4">
         <h2 className="text-lg font-semibold mb-2">{section.label}</h2>
@@ -96,7 +273,6 @@ export default function AdminPage({user,role}) {
           Admin Dashboard
         </h1>
 
-        {/* Dashboard Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {sections.map((section) => (
             <button
@@ -112,9 +288,7 @@ export default function AdminPage({user,role}) {
           ))}
         </div>
 
-        {/* Active Section Content */}
         {renderContent()}
-
       </div>
     </PageWrapper>
   );

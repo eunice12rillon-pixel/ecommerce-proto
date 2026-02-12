@@ -95,18 +95,16 @@ export default function ProductsPage({ products = [], user }) {
         <BackButton fallbackTo="/" label="Back" />
       </div>
       <h1 className="text-3xl font-bold mb-4">All Products</h1>
-      <div className="flex gap-6">
-        {/* Filters Sidebar */}
-        <div className="flex-shrink-0 w-64 border border-gray-200 rounded p-4">
-          <h2 className="font-semibold mb-2">Filters</h2>
-          <div className="mb-4">
+
+      <div className="mb-6 border border-gray-200 rounded-xl p-4 bg-white/90">
+        <h2 className="font-semibold mb-3">Filters</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
             <label className="block mb-1 font-medium">Category</label>
             <select
               value={categoryFilter}
-              onChange={(e) =>
-                updateFilterParams({ category: e.target.value })
-              }
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              onChange={(e) => updateFilterParams({ category: e.target.value })}
+              className="w-full border border-gray-300 rounded px-2 py-2"
             >
               {categories.map((cat, idx) => (
                 <option key={idx} value={cat}>
@@ -120,7 +118,7 @@ export default function ProductsPage({ products = [], user }) {
             <select
               value={priceFilter}
               onChange={(e) => updateFilterParams({ price: e.target.value })}
-              className="w-full border border-gray-300 rounded px-2 py-1"
+              className="w-full border border-gray-300 rounded px-2 py-2"
             >
               <option value="All">All Prices</option>
               <option value="Low">₱0 - ₱499</option>
@@ -129,59 +127,56 @@ export default function ProductsPage({ products = [], user }) {
             </select>
           </div>
         </div>
+      </div>
 
-        {/* Products Grid */}
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.length === 0 ? (
-            <p className="text-gray-500">No products found.</p>
-          ) : (
-            filteredProducts.map((product, idx) => {
-              const hoverColors = [
-                "hover:border-red-400 hover:bg-red-50",
-                "hover:border-blue-400 hover:bg-blue-50",
-                "hover:border-green-400 hover:bg-green-50",
-                "hover:border-purple-400 hover:bg-purple-50",
-                "hover:border-yellow-400 hover:bg-yellow-50",
-                "hover:border-pink-400 hover:bg-pink-50",
-                "hover:border-teal-400 hover:bg-teal-50",
-                "hover:border-orange-400 hover:bg-orange-50",
-              ];
-              const randomHover = hoverColors[idx % hoverColors.length];
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {filteredProducts.length === 0 ? (
+          <p className="text-gray-500">No products found.</p>
+        ) : (
+          filteredProducts.map((product, idx) => {
+            const hoverColors = [
+              "hover:border-red-400 hover:bg-red-50",
+              "hover:border-blue-400 hover:bg-blue-50",
+              "hover:border-green-400 hover:bg-green-50",
+              "hover:border-purple-400 hover:bg-purple-50",
+              "hover:border-yellow-400 hover:bg-yellow-50",
+              "hover:border-pink-400 hover:bg-pink-50",
+              "hover:border-teal-400 hover:bg-teal-50",
+              "hover:border-orange-400 hover:bg-orange-50",
+            ];
+            const randomHover = hoverColors[idx % hoverColors.length];
 
-              return (
-                <div
-                  key={product.id ?? idx}
-                  className={`bg-white shadow-md rounded-lg p-4 flex flex-col border border-transparent ${randomHover}`}
+            return (
+              <div
+                key={product.id ?? idx}
+                className={`bg-white shadow-md rounded-lg p-4 flex flex-col border border-transparent ${randomHover}`}
+              >
+                <Link
+                  to={`/products/${encodeURIComponent(product.id)}`}
+                  className="flex-1"
                 >
-                  <Link
-                    to={`/products/${encodeURIComponent(product.id)}`}
-                    className="flex-1"
-                  >
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                      className="mb-2 w-full h-40 object-cover rounded"
-                    />
-                    <h3 className="font-semibold">{product.name}</h3>
-                    <p className="text-gray-600 text-sm">
-                      {product.description}
-                    </p>
-                    <p className="font-bold mt-2 text-lg">
-                      ₱{product.price.toLocaleString()}
-                    </p>
-                  </Link>
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="mb-2 w-full h-40 object-cover rounded"
+                  />
+                  <h3 className="font-semibold">{product.name}</h3>
+                  <p className="text-gray-600 text-sm">{product.description}</p>
+                  <p className="font-bold mt-2 text-lg">
+                    ₱{product.price.toLocaleString()}
+                  </p>
+                </Link>
 
-                  <button
-                    className="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-                    onClick={() => handleAddToCart(product)}
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
+                <button
+                  className="mt-3 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                  onClick={() => handleAddToCart(product)}
+                >
+                  Add to Cart
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

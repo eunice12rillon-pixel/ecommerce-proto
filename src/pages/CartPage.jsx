@@ -257,7 +257,6 @@ export default function CartPage({ user }) {
                 <option value="">Select Payment Method</option>
                 <option value="Cash on Delivery">Cash on Delivery</option>
                 <option value="GCash">GCash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
               </select>
             </div>
           </div>

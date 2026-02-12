@@ -25,6 +25,8 @@ export default function Header({ user, onLogout, role }) {
       },
       { replace: true },
     );
+  };
+
   const handleLogout = async () => {
     await onLogout();
     navigate("/products", { replace: true });
@@ -42,9 +44,11 @@ export default function Header({ user, onLogout, role }) {
         </h1>
 
         {/* Search bar */}
-        <div className="w-1/3">
-          <SearchBar placeholder="Search products..." onSearch={handleSearch} />
-        </div>
+        {role !== "admin" && (
+          <div className="w-1/3">
+            <SearchBar placeholder="Search products..." onSearch={handleSearch} />
+          </div>
+        )}
 
         <div className="flex items-center gap-4">
           {/* CART ICON - Only show for non-admin users */}

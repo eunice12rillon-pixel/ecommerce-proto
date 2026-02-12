@@ -143,6 +143,28 @@ export default function CartPage({ user }) {
       return;
     }
 
+    const { error: deliveryError } = await supabase
+      .from("order_delivery_details")
+      .upsert(
+        [
+          {
+            order_id: orderData.id,
+            full_name: checkoutDetails.fullName,
+            phone: checkoutDetails.phone,
+            address: checkoutDetails.address,
+            city: checkoutDetails.city,
+            province: checkoutDetails.province,
+            zip_code: checkoutDetails.zipCode,
+            payment_method: checkoutDetails.paymentMethod,
+          },
+        ],
+        { onConflict: "order_id" },
+      );
+
+    if (deliveryError) {
+      console.error("Error saving delivery details:", deliveryError);
+    }
+
     if (cartItems.length > 0) {
       const orderItemsPayload = cartItems.map((item) => {
         const idAsString = String(item.id ?? "");

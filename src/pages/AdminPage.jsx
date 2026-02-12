@@ -84,10 +84,21 @@ export default function AdminPage({ user, role }) {
   const [cartAnalytics, setCartAnalytics] = useState([]);
   const [mostAddedToCart, setMostAddedToCart] = useState([]);
   const [productVariants, setProductVariants] = useState([]);
+  const [analyticsFallback, setAnalyticsFallback] = useState({
+    popularProducts: false,
+    cartEvents: false,
+    dailySales: false,
+    cartAnalytics: false,
+    mostAddedToCart: false,
+    productVariants: false,
+  });
 
   // Orders State
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
+  const [orderDeliveryDetailsById, setOrderDeliveryDetailsById] = useState({});
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = useState(false);
 
   // Messages State (dummy data)
   const [messages] = useState([
@@ -118,15 +129,7 @@ export default function AdminPage({ user, role }) {
       date: new Date(Date.now() - 24 * 60 * 60 * 1000),
       unread: false,
     },
-    {
-      id: 4,
-      customer: "Alice Brown",
-      email: "alice@example.com",
-      subject: "Return request",
-      preview: "I would like to return item #5678 because...",
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      unread: false,
-    },
+    
   ]);
 
   const [formData, setFormData] = useState({
@@ -140,7 +143,7 @@ export default function AdminPage({ user, role }) {
 
   // Category options from CategoriesGrid
   const categoryOptions = [
-    "Paints & Brushes",
+    "Watercolor, acrylic, oil paints & brushes",
     "Canvases & Paper",
     "Beads & Jewelry Making",
     "Wood & Carving Tools",
@@ -188,56 +191,309 @@ export default function AdminPage({ user, role }) {
       .order("created_at", { ascending: false });
 
     if (!itemsError) setOrderItems(itemsData || []);
+
+    if (!error && (data || []).length > 0) {
+      const orderIds = data.map((order) => order.id);
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from("order_delivery_details")
+        .select("*")
+        .in("order_id", orderIds);
+
+      if (!deliveryError && deliveryData) {
+        const mapped = Object.fromEntries(
+          deliveryData.map((detail) => [detail.order_id, detail]),
+        );
+        setOrderDeliveryDetailsById(mapped);
+      } else {
+        setOrderDeliveryDetailsById({});
+      }
+    } else {
+      setOrderDeliveryDetailsById({});
+    }
   };
 
   // Fetch Analytics Data
   const fetchAnalytics = async () => {
-    // Fetch Popular Products
-    const { data: popularData } = await supabase
+    const fallbackStatus = {
+      popularProducts: false,
+      cartEvents: false,
+      dailySales: false,
+      cartAnalytics: false,
+      mostAddedToCart: false,
+      productVariants: false,
+    };
+
+    const { data: popularData, error: popularError } = await supabase
       .from("popular_products")
       .select("*")
       .order("times_ordered", { ascending: false })
       .limit(10);
-    if (popularData) setPopularProducts(popularData);
 
-    // Fetch Cart Events
-    const { data: eventsData } = await supabase
+    if (popularData && popularData.length > 0) setPopularProducts(popularData);
+    if (popularError || !popularData || popularData.length === 0) {
+      fallbackStatus.popularProducts = true;
+      const { data: orderItemsData } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, price");
+
+      const { data: allProducts } = await supabase
+        .from("products")
+        .select("id, name, category");
+
+      const productById = Object.fromEntries(
+        (allProducts || []).map((p) => [String(p.id), p]),
+      );
+
+      const grouped = new Map();
+      (orderItemsData || []).forEach((item) => {
+        const key = String(item.product_id || "");
+        if (!key) return;
+
+        const current = grouped.get(key) || {
+          name: productById[key]?.name || "Unknown Product",
+          category: productById[key]?.category || "N/A",
+          times_ordered: 0,
+          total_quantity_sold: 0,
+          total_revenue: 0,
+        };
+
+        current.times_ordered += 1;
+        current.total_quantity_sold += Number(item.quantity || 0);
+        current.total_revenue +=
+          Number(item.quantity || 0) * Number(item.price || 0);
+        grouped.set(key, current);
+      });
+
+      setPopularProducts(
+        Array.from(grouped.values())
+          .sort(
+            (a, b) =>
+              b.times_ordered - a.times_ordered ||
+              b.total_quantity_sold - a.total_quantity_sold,
+          )
+          .slice(0, 10),
+      );
+    }
+
+    const { data: eventsData, error: eventsError } = await supabase
       .from("cart_events")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (eventsData) setCartEvents(eventsData);
 
-    // Fetch Daily Sales
-    const { data: salesData } = await supabase
+    let eventsForAnalytics = eventsData || [];
+
+    if (eventsData && eventsData.length > 0) setCartEvents(eventsData);
+    if (eventsError || !eventsData || eventsData.length === 0) {
+      fallbackStatus.cartEvents = true;
+      const { data: checkoutItems } = await supabase.from("order_items").select(`
+          product_id,
+          quantity,
+          orders (
+            created_at,
+            user_id
+          )
+        `);
+
+      eventsForAnalytics = (checkoutItems || [])
+        .map((item, idx) => ({
+          id: `checkout-${idx}`,
+          user_id: item.orders?.user_id || null,
+          product_id: item.product_id || null,
+          variant_id: null,
+          event_type: "checkout",
+          quantity: Number(item.quantity || 0),
+          previous_quantity: 0,
+          session_id: "checkout",
+          created_at: item.orders?.created_at || null,
+        }))
+        .filter((event) => Boolean(event.created_at))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 50);
+
+      setCartEvents(eventsForAnalytics);
+    }
+
+    const { data: salesData, error: salesError } = await supabase
       .from("daily_sales")
       .select("*")
       .order("date", { ascending: false })
       .limit(30);
-    if (salesData) setDailySales(salesData);
 
-    // Fetch Cart Analytics
-    const { data: analyticsData } = await supabase
+    if (salesData && salesData.length > 0) setDailySales(salesData);
+    if (salesError || !salesData || salesData.length === 0) {
+      fallbackStatus.dailySales = true;
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("created_at, total, user_id")
+        .order("created_at", { ascending: false });
+
+      const groupedByDate = new Map();
+      (ordersData || []).forEach((order) => {
+        const date = new Date(order.created_at).toISOString().slice(0, 10);
+        const current = groupedByDate.get(date) || {
+          date,
+          total_orders: 0,
+          total_revenue: 0,
+          total_order_value: 0,
+          unique_users: new Set(),
+        };
+
+        const amount = Number(order.total || 0);
+        current.total_orders += 1;
+        current.total_revenue += amount;
+        current.total_order_value += amount;
+        if (order.user_id) current.unique_users.add(order.user_id);
+        groupedByDate.set(date, current);
+      });
+
+      const fallbackDailySales = Array.from(groupedByDate.values())
+        .map((entry) => ({
+          date: entry.date,
+          total_orders: entry.total_orders,
+          total_revenue: entry.total_revenue,
+          average_order_value:
+            entry.total_orders > 0
+              ? entry.total_order_value / entry.total_orders
+              : 0,
+          unique_customers: entry.unique_users.size,
+        }))
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        .slice(0, 30);
+
+      setDailySales(fallbackDailySales);
+    }
+
+    const { data: analyticsData, error: analyticsError } = await supabase
       .from("cart_analytics")
       .select("*")
       .order("date", { ascending: false })
       .limit(30);
-    if (analyticsData) setCartAnalytics(analyticsData);
 
-    // Fetch Most Added to Cart
-    const { data: mostAddedData } = await supabase
+    if (analyticsData && analyticsData.length > 0) setCartAnalytics(analyticsData);
+    if (analyticsError || !analyticsData || analyticsData.length === 0) {
+      fallbackStatus.cartAnalytics = true;
+      const groupedByDate = new Map();
+      eventsForAnalytics.forEach((event) => {
+        const date = event.created_at
+          ? new Date(event.created_at).toISOString().slice(0, 10)
+          : null;
+        if (!date) return;
+
+        const current = groupedByDate.get(date) || {
+          date,
+          users: new Set(),
+          total_cart_items: 0,
+          total_quantity: 0,
+          total_events: 0,
+        };
+
+        if (event.user_id) current.users.add(event.user_id);
+        const qty = Number(event.quantity || 0);
+        current.total_cart_items += qty;
+        current.total_quantity += qty;
+        current.total_events += 1;
+        groupedByDate.set(date, current);
+      });
+
+      setCartAnalytics(
+        Array.from(groupedByDate.values())
+          .map((entry) => ({
+            date: entry.date,
+            users_with_cart: entry.users.size,
+            total_cart_items: entry.total_cart_items,
+            avg_quantity_per_item:
+              entry.total_events > 0
+                ? entry.total_quantity / entry.total_events
+                : 0,
+          }))
+          .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+          .slice(0, 30),
+      );
+    }
+
+    const { data: mostAddedData, error: mostAddedError } = await supabase
       .from("most_added_to_cart")
       .select("*")
       .order("times_added", { ascending: false })
       .limit(10);
-    if (mostAddedData) setMostAddedToCart(mostAddedData);
 
-    // Fetch Product Variants
-    const { data: variantsData } = await supabase
+    if (mostAddedData && mostAddedData.length > 0) setMostAddedToCart(mostAddedData);
+    if (mostAddedError || !mostAddedData || mostAddedData.length === 0) {
+      fallbackStatus.mostAddedToCart = true;
+      const addedEventsRaw = eventsForAnalytics.filter(
+        (e) => e.event_type === "add",
+      );
+      const addedEvents =
+        addedEventsRaw.length > 0
+          ? addedEventsRaw
+          : eventsForAnalytics.filter((e) => e.event_type === "checkout");
+      const productIds = [...new Set(addedEvents.map((e) => e.product_id).filter(Boolean))];
+
+      let productById = {};
+      if (productIds.length > 0) {
+        const { data: productsData } = await supabase
+          .from("products")
+          .select("id, name, category")
+          .in("id", productIds);
+
+        productById = Object.fromEntries(
+          (productsData || []).map((p) => [String(p.id), p]),
+        );
+      }
+
+      const grouped = new Map();
+      addedEvents.forEach((event) => {
+        const key = String(event.product_id || "");
+        if (!key) return;
+
+        const current = grouped.get(key) || {
+          name: productById[key]?.name || "Unknown Product",
+          category: productById[key]?.category || "N/A",
+          times_added: 0,
+          total_quantity_added: 0,
+        };
+
+        current.times_added += 1;
+        current.total_quantity_added += Number(event.quantity || 0);
+        grouped.set(key, current);
+      });
+
+      setMostAddedToCart(
+        Array.from(grouped.values())
+          .sort(
+            (a, b) =>
+              b.times_added - a.times_added ||
+              b.total_quantity_added - a.total_quantity_added,
+          )
+          .slice(0, 10),
+      );
+    }
+
+    const { data: variantsData, error: variantsError } = await supabase
       .from("product_variants")
       .select("*")
       .order("name", { ascending: true });
-    if (variantsData) setProductVariants(variantsData);
+
+    if (variantsData && variantsData.length > 0) setProductVariants(variantsData);
+    if (variantsError || !variantsData || variantsData.length === 0) {
+      fallbackStatus.productVariants = true;
+      const { data: productsData } = await supabase
+        .from("products")
+        .select("id, name, category, stock")
+        .order("name", { ascending: true });
+
+      setProductVariants(
+        (productsData || []).map((product) => ({
+          variant_id: String(product.id),
+          name: product.name,
+          category: product.category,
+          stock: Number(product.stock || 0),
+        })),
+      );
+    }
+
+    setAnalyticsFallback(fallbackStatus);
   };
 
   useEffect(() => {
@@ -254,6 +510,16 @@ export default function AdminPage({ user, role }) {
     } else if (activeSection === "notifications") {
       fetchProducts();
     }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "analytics") return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchAnalytics();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, [activeSection]);
 
   const handleChange = (e) => {
@@ -335,6 +601,16 @@ export default function AdminPage({ user, role }) {
     });
     setEditingId(product.id);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const openOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setIsOrderDetailsOpen(true);
+  };
+
+  const closeOrderDetails = () => {
+    setIsOrderDetailsOpen(false);
+    setSelectedOrder(null);
   };
 
   // Get low stock products
@@ -701,6 +977,13 @@ export default function AdminPage({ user, role }) {
 
     // ORDERS SECTION - Track Checkouts
     if (activeSection === "orders") {
+      const selectedOrderItems = selectedOrder
+        ? orderItems.filter((item) => item.order_id === selectedOrder.id)
+        : [];
+      const selectedDeliveryDetails = selectedOrder
+        ? orderDeliveryDetailsById[selectedOrder.id]
+        : null;
+
       return (
         <div className="p-4 bg-white rounded shadow mt-4">
           <h2 className="text-lg font-semibold mb-4">Orders & Checkouts</h2>
@@ -845,7 +1128,10 @@ export default function AdminPage({ user, role }) {
                       </td>
                       <td className="p-2">
                         <div className="flex gap-2 justify-center">
-                          <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">
+                          <button
+                            onClick={() => openOrderDetails(order)}
+                            className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600"
+                          >
                             View Details
                           </button>
                         </div>
@@ -854,6 +1140,113 @@ export default function AdminPage({ user, role }) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {isOrderDetailsOpen && selectedOrder && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-3xl rounded-lg bg-white p-4 shadow-xl">
+                <div className="mb-4 flex items-center justify-between">
+                  <h4 className="text-lg font-semibold">
+                    Order Details: {selectedOrder.id?.substring(0, 8)}...
+                  </h4>
+                  <button
+                    onClick={closeOrderDetails}
+                    className="rounded bg-gray-200 px-3 py-1 text-sm hover:bg-gray-300"
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="mb-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                  <div>
+                    <p className="text-gray-500">Customer</p>
+                    <p className="font-medium">
+                      {selectedOrder.user_id?.substring(0, 8)}...
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Date</p>
+                    <p className="font-medium">
+                      {selectedOrder.created_at
+                        ? new Date(selectedOrder.created_at).toLocaleString()
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Total</p>
+                    <p className="font-semibold">
+                      â‚±{Number(selectedOrder.total || 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mb-4 rounded border bg-gray-50 p-3 text-sm">
+                  <p className="mb-2 font-semibold text-gray-700">
+                    Delivery Location
+                  </p>
+                  {selectedDeliveryDetails ? (
+                    <div className="space-y-1 text-gray-700">
+                      <p>
+                        {selectedDeliveryDetails.full_name || "N/A"} |{" "}
+                        {selectedDeliveryDetails.phone || "N/A"}
+                      </p>
+                      <p>
+                        {selectedDeliveryDetails.address || "N/A"},{" "}
+                        {selectedDeliveryDetails.city || "N/A"},{" "}
+                        {selectedDeliveryDetails.province || "N/A"},{" "}
+                        {selectedDeliveryDetails.zip_code || ""}
+                      </p>
+                      <p>
+                        Payment: {selectedDeliveryDetails.payment_method || "N/A"}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500">No delivery details saved.</p>
+                  )}
+                </div>
+
+                {selectedOrderItems.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No line items found for this order.
+                  </p>
+                ) : (
+                  <div className="max-h-80 overflow-y-auto rounded border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="p-2 text-left">Product</th>
+                          <th className="p-2 text-right">Qty</th>
+                          <th className="p-2 text-right">Price</th>
+                          <th className="p-2 text-right">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedOrderItems.map((item) => (
+                          <tr key={item.id} className="border-t">
+                            <td className="p-2">
+                              {item.products?.name ||
+                                item.product_name ||
+                                "Unknown Product"}
+                            </td>
+                            <td className="p-2 text-right">{item.quantity}</td>
+                            <td className="p-2 text-right">
+                              â‚±{Number(item.price || 0).toFixed(2)}
+                            </td>
+                            <td className="p-2 text-right font-medium">
+                              â‚±
+                              {Number(
+                                Number(item.quantity || 0) *
+                                  Number(item.price || 0),
+                              ).toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -984,10 +1377,26 @@ export default function AdminPage({ user, role }) {
 
     // ANALYTICS SECTION
     if (activeSection === "analytics") {
+      const fallbackLabels = [];
+      if (analyticsFallback.popularProducts) fallbackLabels.push("Most Ordered Products");
+      if (analyticsFallback.dailySales) fallbackLabels.push("Daily Sales");
+      if (analyticsFallback.cartAnalytics) fallbackLabels.push("Cart Analytics");
+      if (analyticsFallback.mostAddedToCart) fallbackLabels.push("Most Added to Cart");
+      if (analyticsFallback.cartEvents) fallbackLabels.push("Recent Cart Events");
+      if (analyticsFallback.productVariants) fallbackLabels.push("Product Variants");
+
       return (
         <div className="p-4 bg-white rounded shadow mt-4">
-          <h2 className="text-2xl font-semibold mb-6">Analytics Dashboard</h2>
-
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-semibold">Analytics Dashboard</h2>
+            <button
+              onClick={fetchAnalytics}
+              className="rounded bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              Refresh Analytics
+            </button>
+          </div>
+          
           {/* MOST ORDERED PRODUCTS */}
           <div className="mb-8">
             <h3 className="text-xl font-semibold mb-4 text-blue-700">

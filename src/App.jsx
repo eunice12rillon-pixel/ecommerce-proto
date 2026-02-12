@@ -38,7 +38,7 @@ function App() {
   const [, setSaleBadgeRefresh] = React.useState(0);
 
   const slides = [
-    { image: "/img1.jpg", quote: "Art is the heartbeat of our local culture." },
+    { image: "/Slide1.jpg", quote: "Art is the heartbeat of our local culture." },
     { image: "/img2.jpg", quote: "Every handmade piece tells a story." },
     { image: "/img3.jpg", quote: "Creativity connects communities." },
   ];

@@ -22,6 +22,18 @@ alter table public.order_items
   add column if not exists product_category text,
   add column if not exists product_image_url text;
 
+create table if not exists public.order_delivery_details (
+  order_id uuid primary key references public.orders(id) on delete cascade,
+  full_name text,
+  phone text,
+  address text,
+  city text,
+  province text,
+  zip_code text,
+  payment_method text,
+  created_at timestamptz not null default now()
+);
+
 create or replace view public.product_variants as
 select
   p.id::text as variant_id,

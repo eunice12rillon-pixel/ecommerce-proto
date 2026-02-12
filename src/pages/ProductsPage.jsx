@@ -97,7 +97,7 @@ export default function ProductsPage({ products = [], user }) {
       previousQuantity,
     });
 
-    showToast(`${product.name} successfully added to cart!`);
+    showToast("add to cart successfully");
   };
 
   return (

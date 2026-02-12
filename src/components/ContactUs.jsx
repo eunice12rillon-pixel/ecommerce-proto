@@ -9,6 +9,18 @@ import {
 } from "react-icons/fa";
 
 export default function ContactUs() {
+  const policyContent = {
+    "Privacy Policy":
+      "We collect basic account and order information to process purchases, improve service, and keep transactions secure. We do not sell your personal data to third parties.",
+    "Terms & Conditions":
+      "By using Artisan Alley, you agree to provide accurate account details, follow marketplace rules, and complete payments for confirmed orders. Violations may lead to account restrictions.",
+    "Return & Refund Policy":
+      "Return/refund requests must be filed within 7 days after delivery with valid proof (photos/videos). Approved refunds are processed using the original payment method.",
+    "Shipping Policy":
+      "Orders are processed after payment confirmation and shipped based on seller location. Delivery timelines may vary by region, courier delays, and peak seasons.",
+  };
+  const [activePolicy, setActivePolicy] = React.useState("Privacy Policy");
+
   return (
     <footer className="relative overflow-hidden py-14">
       <div className="max-w-7xl mx-auto px-4">
@@ -74,6 +86,64 @@ export default function ContactUs() {
                   <FaInstagram size={16} />
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-orange-100">
+            <h3 className="text-sm font-semibold tracking-wide text-gray-700 uppercase mb-3">
+              Policies
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setActivePolicy("Privacy Policy")}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  activePolicy === "Privacy Policy"
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                }`}
+              >
+                Privacy Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePolicy("Terms & Conditions")}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  activePolicy === "Terms & Conditions"
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                }`}
+              >
+                Terms & Conditions
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePolicy("Return & Refund Policy")}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  activePolicy === "Return & Refund Policy"
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                }`}
+              >
+                Return & Refund Policy
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePolicy("Shipping Policy")}
+                className={`px-3 py-1.5 rounded-full border text-sm ${
+                  activePolicy === "Shipping Policy"
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-700 border-gray-200"
+                }`}
+              >
+                Shipping Policy
+              </button>
+            </div>
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-white/90 p-4">
+              <h4 className="font-semibold text-gray-900">{activePolicy}</h4>
+              <p className="mt-2 text-sm text-gray-700 leading-relaxed">
+                {policyContent[activePolicy]}
+              </p>
             </div>
           </div>
         </div>

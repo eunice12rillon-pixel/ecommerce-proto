@@ -4,6 +4,7 @@ import BackButton from "../components/BackButton";
 import { readCart, writeCart, clearCart } from "../utils/cartStorage";
 import { supabase } from "../utils/supabase";
 import { logCartEvent } from "../utils/cartEvents";
+import { ensureOrderMeta } from "../utils/orderMeta";
 
 export default function CartPage({ user }) {
   const [cartItems, setCartItems] = useState([]);
@@ -234,8 +235,15 @@ export default function CartPage({ user }) {
         );
       }
     }
-
-    showToast("Checkout successful!");
+    const orderMeta = ensureOrderMeta({
+      orderId: orderData.id,
+      userId: user.id,
+      customerEmail: user.email,
+      createdAt: new Date().toISOString(),
+    });
+    showToast(
+      `Checkout successful! Confirmation email sent. Tracking: ${orderMeta?.trackingNumber || "Pending"}`,
+    );
 
     import("canvas-confetti").then((confetti) => {
       confetti.default({

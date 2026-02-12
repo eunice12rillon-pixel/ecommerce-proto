@@ -25,6 +25,18 @@ export default function AdminSectionContent({
   setActiveSection,
 }) {
   const lowStockProducts = products.filter((p) => p.stock < 10);
+  const [selectedOrder, setSelectedOrder] = React.useState(null);
+  const [isOrderDetailsOpen, setIsOrderDetailsOpen] = React.useState(false);
+
+  const openOrderDetails = (order) => {
+    setSelectedOrder(order);
+    setIsOrderDetailsOpen(true);
+  };
+
+  const closeOrderDetails = () => {
+    setIsOrderDetailsOpen(false);
+    setSelectedOrder(null);
+  };
 
   if (activeSection === "overview") {
     const totalProducts = products.length;
@@ -346,27 +358,185 @@ export default function AdminSectionContent({
 
   if (activeSection === "orders") {
     return (
-      <div className="p-4 bg-white rounded shadow mt-4">
-        <h2 className="text-lg font-semibold mb-4">Orders & Checkouts</h2>
+      <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-linear-to-b from-white to-slate-50 shadow-sm">
+        <div className="border-b border-slate-200 bg-white/90 px-5 py-4">
+          <h2 className="text-lg font-semibold text-slate-900">Orders & Checkouts</h2>
+          <p className="text-xs text-slate-500 mt-1">
+            Monitor customer orders, totals, and status in one place.
+          </p>
+        </div>
+        <div className="p-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-purple-100 p-4 rounded-lg">
-            <h3 className="text-sm text-gray-600">Total Orders</h3>
-            <p className="text-2xl font-bold text-purple-700">{orders.length}</p>
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
+            <h3 className="text-xs uppercase tracking-wide text-purple-700">Total Orders</h3>
+            <p className="text-2xl font-bold text-purple-900 mt-1">{orders.length}</p>
           </div>
-          <div className="bg-green-100 p-4 rounded-lg">
-            <h3 className="text-sm text-gray-600">Total Items Sold</h3>
-            <p className="text-2xl font-bold text-green-700">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <h3 className="text-xs uppercase tracking-wide text-emerald-700">Total Items Sold</h3>
+            <p className="text-2xl font-bold text-emerald-900 mt-1">
               {orderItems.reduce((sum, item) => sum + (item.quantity || 0), 0)}
             </p>
           </div>
-          <div className="bg-blue-100 p-4 rounded-lg">
-            <h3 className="text-sm text-gray-600">Total Revenue</h3>
-            <p className="text-2xl font-bold text-blue-700">
-              ₱{orders.reduce((sum, order) => sum + Number(order.total || 0), 0).toFixed(2)}
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+            <h3 className="text-xs uppercase tracking-wide text-sky-700">Total Revenue</h3>
+            <p className="text-2xl font-bold text-sky-900 mt-1">
+              PHP {orders.reduce((sum, order) => sum + Number(order.total || 0), 0).toFixed(2)}
             </p>
           </div>
         </div>
-        <p className="text-gray-600 text-sm">Orders and checkout tables are available below.</p>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-900 text-slate-100">
+                <th className="px-3 py-3 text-left font-semibold">Order ID</th>
+                <th className="px-3 py-3 text-left font-semibold">Customer</th>
+                <th className="px-3 py-3 text-left font-semibold">Date</th>
+                <th className="px-3 py-3 text-right font-semibold">Total</th>
+                <th className="px-3 py-3 text-left font-semibold">Status</th>
+                <th className="px-3 py-3 text-center font-semibold">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="p-6 text-center text-slate-500">
+                    No orders yet.
+                  </td>
+                </tr>
+              ) : (
+                orders.map((order) => {
+                  const status = (order.status || "Completed").toString();
+                  const statusClass =
+                    status.toLowerCase() === "pending"
+                      ? "bg-amber-100 text-amber-700"
+                      : status.toLowerCase() === "cancelled"
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-emerald-100 text-emerald-700";
+                  return (
+                    <tr key={order.id} className="border-t border-slate-100 hover:bg-slate-50/80">
+                      <td className="px-3 py-3 font-mono text-xs text-slate-700">
+                        {String(order.id).slice(0, 8)}...
+                      </td>
+                      <td className="px-3 py-3 font-mono text-xs text-slate-600">
+                        {String(order.user_id || "Guest").slice(0, 8)}
+                        {order.user_id ? "..." : ""}
+                      </td>
+                      <td className="px-3 py-3 text-slate-700">
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleString()
+                          : "N/A"}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-slate-900">
+                        PHP {Number(order.total || 0).toFixed(2)}
+                      </td>
+                      <td className="px-3 py-3">
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusClass}`}>
+                          {status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => openOrderDetails(order)}
+                            className="cursor-pointer rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700"
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {isOrderDetailsOpen && selectedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 backdrop-blur-sm p-4">
+            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-4">
+                <h3 className="text-lg font-semibold text-slate-900">Order Details</h3>
+                <button
+                  type="button"
+                  onClick={closeOrderDetails}
+                  className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                >
+                  X
+                </button>
+              </div>
+              <div className="p-5 space-y-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Order ID</p>
+                    <p className="font-mono text-slate-800 mt-1">{String(selectedOrder.id)}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Customer</p>
+                    <p className="font-mono text-slate-800 mt-1">{String(selectedOrder.user_id || "Guest")}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Date</p>
+                    <p className="text-slate-800 mt-1">
+                      {selectedOrder.created_at
+                        ? new Date(selectedOrder.created_at).toLocaleString()
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
+                    <p className="font-semibold text-slate-900 mt-1">
+                      PHP {Number(selectedOrder.total || 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-slate-800 mb-2">Items</h4>
+                  <div className="overflow-hidden rounded-xl border border-slate-200">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-700">
+                          <th className="px-3 py-2 text-left font-semibold">Product</th>
+                          <th className="px-3 py-2 text-right font-semibold">Price</th>
+                          <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                          <th className="px-3 py-2 text-right font-semibold">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderItems
+                          .filter((item) => item.order_id === selectedOrder.id)
+                          .map((item) => {
+                            const name =
+                              item.products?.name ||
+                              item.product_name ||
+                              "Unknown Product";
+                            const price = Number(item.price || 0);
+                            const qty = Number(item.quantity || 0);
+                            return (
+                              <tr key={item.id} className="border-t border-slate-100">
+                                <td className="px-3 py-2 text-slate-700">{name}</td>
+                                <td className="px-3 py-2 text-right text-slate-700">
+                                  PHP {price.toFixed(2)}
+                                </td>
+                                <td className="px-3 py-2 text-right text-slate-700">{qty}</td>
+                                <td className="px-3 py-2 text-right font-medium text-slate-900">
+                                  PHP {(price * qty).toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
     );
   }
@@ -402,6 +572,7 @@ export default function AdminSectionContent({
             </div>
           ))}
         </div>
+
       </div>
     );
   }
@@ -489,3 +660,6 @@ export default function AdminSectionContent({
     </div>
   );
 }
+
+
+

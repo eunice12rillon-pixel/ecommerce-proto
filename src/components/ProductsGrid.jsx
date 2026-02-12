@@ -26,7 +26,7 @@ export default function ProductsGrid({ products = [], user }) {
       previousQuantity,
     });
 
-    showToast(`${product.name} successfully added to cart!`);
+    showToast("add to cart successfully");
   };
 
   return (

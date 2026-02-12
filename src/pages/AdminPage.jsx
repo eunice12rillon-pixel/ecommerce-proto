@@ -123,10 +123,19 @@ export default function AdminPage({ user, role }) {
   const [cartAnalytics, setCartAnalytics] = useState([]);
   const [mostAddedToCart, setMostAddedToCart] = useState([]);
   const [productVariants, setProductVariants] = useState([]);
+  const [_analyticsFallback, setAnalyticsFallback] = useState({
+    popularProducts: false,
+    cartEvents: false,
+    dailySales: false,
+    cartAnalytics: false,
+    mostAddedToCart: false,
+    productVariants: false,
+  });
 
   // Orders State
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
+  const [_orderDeliveryDetailsById, setOrderDeliveryDetailsById] = useState({});
 
   // Messages State (dummy + customer-to-seller chat)
   const [messages, setMessages] = useState(() =>
@@ -145,7 +154,6 @@ export default function AdminPage({ user, role }) {
       window.removeEventListener("seller-messages-updated", refreshMessages);
     };
   }, []);
-
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -157,7 +165,7 @@ export default function AdminPage({ user, role }) {
 
   // Category options from CategoriesGrid
   const categoryOptions = [
-    "Paints & Brushes",
+    "Watercolor, acrylic, oil paints & brushes",
     "Canvases & Paper",
     "Beads & Jewelry Making",
     "Wood & Carving Tools",
@@ -205,56 +213,309 @@ export default function AdminPage({ user, role }) {
       .order("created_at", { ascending: false });
 
     if (!itemsError) setOrderItems(itemsData || []);
+
+    if (!error && (data || []).length > 0) {
+      const orderIds = data.map((order) => order.id);
+      const { data: deliveryData, error: deliveryError } = await supabase
+        .from("order_delivery_details")
+        .select("*")
+        .in("order_id", orderIds);
+
+      if (!deliveryError && deliveryData) {
+        const mapped = Object.fromEntries(
+          deliveryData.map((detail) => [detail.order_id, detail]),
+        );
+        setOrderDeliveryDetailsById(mapped);
+      } else {
+        setOrderDeliveryDetailsById({});
+      }
+    } else {
+      setOrderDeliveryDetailsById({});
+    }
   };
 
   // Fetch Analytics Data
   const fetchAnalytics = async () => {
-    // Fetch Popular Products
-    const { data: popularData } = await supabase
+    const fallbackStatus = {
+      popularProducts: false,
+      cartEvents: false,
+      dailySales: false,
+      cartAnalytics: false,
+      mostAddedToCart: false,
+      productVariants: false,
+    };
+
+    const { data: popularData, error: popularError } = await supabase
       .from("popular_products")
       .select("*")
       .order("times_ordered", { ascending: false })
       .limit(10);
-    if (popularData) setPopularProducts(popularData);
 
-    // Fetch Cart Events
-    const { data: eventsData } = await supabase
+    if (popularData && popularData.length > 0) setPopularProducts(popularData);
+    if (popularError || !popularData || popularData.length === 0) {
+      fallbackStatus.popularProducts = true;
+      const { data: orderItemsData } = await supabase
+        .from("order_items")
+        .select("product_id, quantity, price");
+
+      const { data: allProducts } = await supabase
+        .from("products")
+        .select("id, name, category");
+
+      const productById = Object.fromEntries(
+        (allProducts || []).map((p) => [String(p.id), p]),
+      );
+
+      const grouped = new Map();
+      (orderItemsData || []).forEach((item) => {
+        const key = String(item.product_id || "");
+        if (!key) return;
+
+        const current = grouped.get(key) || {
+          name: productById[key]?.name || "Unknown Product",
+          category: productById[key]?.category || "N/A",
+          times_ordered: 0,
+          total_quantity_sold: 0,
+          total_revenue: 0,
+        };
+
+        current.times_ordered += 1;
+        current.total_quantity_sold += Number(item.quantity || 0);
+        current.total_revenue +=
+          Number(item.quantity || 0) * Number(item.price || 0);
+        grouped.set(key, current);
+      });
+
+      setPopularProducts(
+        Array.from(grouped.values())
+          .sort(
+            (a, b) =>
+              b.times_ordered - a.times_ordered ||
+              b.total_quantity_sold - a.total_quantity_sold,
+          )
+          .slice(0, 10),
+      );
+    }
+
+    const { data: eventsData, error: eventsError } = await supabase
       .from("cart_events")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
-    if (eventsData) setCartEvents(eventsData);
 
-    // Fetch Daily Sales
-    const { data: salesData } = await supabase
+    let eventsForAnalytics = eventsData || [];
+
+    if (eventsData && eventsData.length > 0) setCartEvents(eventsData);
+    if (eventsError || !eventsData || eventsData.length === 0) {
+      fallbackStatus.cartEvents = true;
+      const { data: checkoutItems } = await supabase.from("order_items").select(`
+          product_id,
+          quantity,
+          orders (
+            created_at,
+            user_id
+          )
+        `);
+
+      eventsForAnalytics = (checkoutItems || [])
+        .map((item, idx) => ({
+          id: `checkout-${idx}`,
+          user_id: item.orders?.user_id || null,
+          product_id: item.product_id || null,
+          variant_id: null,
+          event_type: "checkout",
+          quantity: Number(item.quantity || 0),
+          previous_quantity: 0,
+          session_id: "checkout",
+          created_at: item.orders?.created_at || null,
+        }))
+        .filter((event) => Boolean(event.created_at))
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 50);
+
+      setCartEvents(eventsForAnalytics);
+    }
+
+    const { data: salesData, error: salesError } = await supabase
       .from("daily_sales")
       .select("*")
       .order("date", { ascending: false })
       .limit(30);
-    if (salesData) setDailySales(salesData);
 
-    // Fetch Cart Analytics
-    const { data: analyticsData } = await supabase
+    if (salesData && salesData.length > 0) setDailySales(salesData);
+    if (salesError || !salesData || salesData.length === 0) {
+      fallbackStatus.dailySales = true;
+      const { data: ordersData } = await supabase
+        .from("orders")
+        .select("created_at, total, user_id")
+        .order("created_at", { ascending: false });
+
+      const groupedByDate = new Map();
+      (ordersData || []).forEach((order) => {
+        const date = new Date(order.created_at).toISOString().slice(0, 10);
+        const current = groupedByDate.get(date) || {
+          date,
+          total_orders: 0,
+          total_revenue: 0,
+          total_order_value: 0,
+          unique_users: new Set(),
+        };
+
+        const amount = Number(order.total || 0);
+        current.total_orders += 1;
+        current.total_revenue += amount;
+        current.total_order_value += amount;
+        if (order.user_id) current.unique_users.add(order.user_id);
+        groupedByDate.set(date, current);
+      });
+
+      const fallbackDailySales = Array.from(groupedByDate.values())
+        .map((entry) => ({
+          date: entry.date,
+          total_orders: entry.total_orders,
+          total_revenue: entry.total_revenue,
+          average_order_value:
+            entry.total_orders > 0
+              ? entry.total_order_value / entry.total_orders
+              : 0,
+          unique_customers: entry.unique_users.size,
+        }))
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+        .slice(0, 30);
+
+      setDailySales(fallbackDailySales);
+    }
+
+    const { data: analyticsData, error: analyticsError } = await supabase
       .from("cart_analytics")
       .select("*")
       .order("date", { ascending: false })
       .limit(30);
-    if (analyticsData) setCartAnalytics(analyticsData);
 
-    // Fetch Most Added to Cart
-    const { data: mostAddedData } = await supabase
+    if (analyticsData && analyticsData.length > 0) setCartAnalytics(analyticsData);
+    if (analyticsError || !analyticsData || analyticsData.length === 0) {
+      fallbackStatus.cartAnalytics = true;
+      const groupedByDate = new Map();
+      eventsForAnalytics.forEach((event) => {
+        const date = event.created_at
+          ? new Date(event.created_at).toISOString().slice(0, 10)
+          : null;
+        if (!date) return;
+
+        const current = groupedByDate.get(date) || {
+          date,
+          users: new Set(),
+          total_cart_items: 0,
+          total_quantity: 0,
+          total_events: 0,
+        };
+
+        if (event.user_id) current.users.add(event.user_id);
+        const qty = Number(event.quantity || 0);
+        current.total_cart_items += qty;
+        current.total_quantity += qty;
+        current.total_events += 1;
+        groupedByDate.set(date, current);
+      });
+
+      setCartAnalytics(
+        Array.from(groupedByDate.values())
+          .map((entry) => ({
+            date: entry.date,
+            users_with_cart: entry.users.size,
+            total_cart_items: entry.total_cart_items,
+            avg_quantity_per_item:
+              entry.total_events > 0
+                ? entry.total_quantity / entry.total_events
+                : 0,
+          }))
+          .sort((a, b) => String(b.date).localeCompare(String(a.date)))
+          .slice(0, 30),
+      );
+    }
+
+    const { data: mostAddedData, error: mostAddedError } = await supabase
       .from("most_added_to_cart")
       .select("*")
       .order("times_added", { ascending: false })
       .limit(10);
-    if (mostAddedData) setMostAddedToCart(mostAddedData);
 
-    // Fetch Product Variants
-    const { data: variantsData } = await supabase
+    if (mostAddedData && mostAddedData.length > 0) setMostAddedToCart(mostAddedData);
+    if (mostAddedError || !mostAddedData || mostAddedData.length === 0) {
+      fallbackStatus.mostAddedToCart = true;
+      const addedEventsRaw = eventsForAnalytics.filter(
+        (e) => e.event_type === "add",
+      );
+      const addedEvents =
+        addedEventsRaw.length > 0
+          ? addedEventsRaw
+          : eventsForAnalytics.filter((e) => e.event_type === "checkout");
+      const productIds = [...new Set(addedEvents.map((e) => e.product_id).filter(Boolean))];
+
+      let productById = {};
+      if (productIds.length > 0) {
+        const { data: productsData } = await supabase
+          .from("products")
+          .select("id, name, category")
+          .in("id", productIds);
+
+        productById = Object.fromEntries(
+          (productsData || []).map((p) => [String(p.id), p]),
+        );
+      }
+
+      const grouped = new Map();
+      addedEvents.forEach((event) => {
+        const key = String(event.product_id || "");
+        if (!key) return;
+
+        const current = grouped.get(key) || {
+          name: productById[key]?.name || "Unknown Product",
+          category: productById[key]?.category || "N/A",
+          times_added: 0,
+          total_quantity_added: 0,
+        };
+
+        current.times_added += 1;
+        current.total_quantity_added += Number(event.quantity || 0);
+        grouped.set(key, current);
+      });
+
+      setMostAddedToCart(
+        Array.from(grouped.values())
+          .sort(
+            (a, b) =>
+              b.times_added - a.times_added ||
+              b.total_quantity_added - a.total_quantity_added,
+          )
+          .slice(0, 10),
+      );
+    }
+
+    const { data: variantsData, error: variantsError } = await supabase
       .from("product_variants")
       .select("*")
       .order("name", { ascending: true });
-    if (variantsData) setProductVariants(variantsData);
+
+    if (variantsData && variantsData.length > 0) setProductVariants(variantsData);
+    if (variantsError || !variantsData || variantsData.length === 0) {
+      fallbackStatus.productVariants = true;
+      const { data: productsData } = await supabase
+        .from("products")
+        .select("id, name, category, stock")
+        .order("name", { ascending: true });
+
+      setProductVariants(
+        (productsData || []).map((product) => ({
+          variant_id: String(product.id),
+          name: product.name,
+          category: product.category,
+          stock: Number(product.stock || 0),
+        })),
+      );
+    }
+
+    setAnalyticsFallback(fallbackStatus);
   };
 
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -274,6 +535,16 @@ export default function AdminPage({ user, role }) {
     }
   }, [activeSection]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (activeSection !== "analytics") return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchAnalytics();
+    }, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [activeSection]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -423,7 +694,6 @@ export default function AdminPage({ user, role }) {
   if (!user || role !== "admin") {
     return null;
   }
-
   return (
     <PageWrapper>
       <div className="min-h-screen p-4">

@@ -27,80 +27,7 @@ import Login from "./pages/Login";
 import Profile from "./pages/Profiles";
 import Signup from "./pages/Signup";
 
-const HARDCODED_PRODUCTS = [
-  {
-    id: "hardcoded-1",
-    image: "/paint-brush.webp",
-    name: "Premium Paint Brush Set",
-    description: "High-quality brushes for watercolor, acrylic & oil.",
-    category: "Painting Tools",
-    price: 550,
-    rating: 4.7,
-  },
-  {
-    id: "hardcoded-2",
-    image: "/acrylic-set.webp",
-    name: "Acrylic Paint Set",
-    description: "Vibrant acrylic paints perfect for beginners & pros.",
-    category: "Painting Tools",
-    price: 799,
-    rating: 4.8,
-  },
-  {
-    id: "hardcoded-3",
-    image: "/canvas-pack.webp",
-    name: "Canvas Panel Pack",
-    description: "Durable canvas panels for creative projects.",
-    category: "Canvas & Surfaces",
-    price: 650,
-    rating: 4.6,
-  },
-  {
-    id: "hardcoded-4",
-    image: "/sketchbook.webp",
-    name: "Hardbound Sketchbook",
-    description: "Premium thick paper for sketching & drawing.",
-    category: "Paper & Sketch",
-    price: 450,
-    rating: 4.7,
-  },
-  {
-    id: "hardcoded-5",
-    image: "/watercolor-set.webp",
-    name: "Watercolor Paint Set",
-    description: "Rich pigments with smooth blending capability.",
-    category: "Painting Tools",
-    price: 720,
-    rating: 4.9,
-  },
-  {
-    id: "hardcoded-6",
-    image: "/palette.webp",
-    name: "Wooden Paint Palette",
-    description: "Ergonomic wooden palette for easy mixing.",
-    category: "Accessories",
-    price: 299,
-    rating: 4.5,
-  },
-  {
-    id: "hardcoded-7",
-    image: "/easel.webp",
-    name: "Adjustable Wooden Easel",
-    description: "Stable and adjustable easel for studio use.",
-    category: "Studio Equipment",
-    price: 1499,
-    rating: 4.8,
-  },
-  {
-    id: "hardcoded-8",
-    image: "/charcoal-set.webp",
-    name: "Charcoal Drawing Set",
-    description: "Professional charcoal sticks for deep shading.",
-    category: "Drawing Tools",
-    price: 399,
-    rating: 4.6,
-  },
-];
+const HARDCODED_PRODUCTS = [];
 
 const hashSeed = (seedValue, factor = 31) => {
   const seed = String(seedValue || "product");
@@ -141,6 +68,9 @@ const extendDescription = (text) =>
     ? text
     : `${text} Great for students, hobbyists, and professional artists who want reliable results.`;
 
+const hasProductImage = (product) =>
+  typeof product?.image === "string" && product.image.trim().length > 0;
+
 function App() {
   const getSaleBadgeHiddenKey = (sessionUser) =>
     `saleBadgeHidden_${sessionUser?.id || "guest"}`;
@@ -152,7 +82,7 @@ function App() {
   const [, setSaleBadgeRefresh] = React.useState(0);
 
   const slides = [
-    { image: "/img1.jpg", quote: "Art is the heartbeat of our local culture." },
+    { image: "/Slide1.jpg", quote: "Art is the heartbeat of our local culture." },
     { image: "/img2.jpg", quote: "Every handmade piece tells a story." },
     { image: "/img3.jpg", quote: "Creativity connects communities." },
   ];
@@ -247,9 +177,13 @@ function App() {
             : getFallbackComments(product.name),
         }));
 
-        setProducts([...formattedProducts, ...enrichedHardcodedProducts]);
+        setProducts(
+          [...formattedProducts, ...enrichedHardcodedProducts].filter(
+            hasProductImage,
+          ),
+        );
       } else {
-        setProducts(enrichedHardcodedProducts);
+        setProducts(enrichedHardcodedProducts.filter(hasProductImage));
       }
     };
 

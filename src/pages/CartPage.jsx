@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "../components/ToastContext"; // ✅ Toast
-import confetti from "canvas-confetti";
+import { useToast } from "../components/ToastContext";
+import BackButton from "../components/BackButton";
+import { readCart, writeCart, clearCart } from "../utils/cartStorage";
 
-export default function CartPage() {
+export default function CartPage({ user }) {
   const [cartItems, setCartItems] = useState([]);
   const [discountCode, setDiscountCode] = useState("");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [total, setTotal] = useState(0);
-  const { showToast } = useToast(); // ✅ Toast hook
-  const navigate = useNavigate();
+  const [checkoutDetails, setCheckoutDetails] = useState({
+    fullName: "",
+    phone: "",
+    address: "",
+    city: "",
+    province: "",
+    zipCode: "",
+    paymentMethod: "",
+  });
+  const { showToast } = useToast();
 
   // Compute total dynamically
   const computeTotal = (items) => {
@@ -21,14 +29,14 @@ export default function CartPage() {
   };
 
   useEffect(() => {
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const cart = readCart(user);
     setCartItems(cart);
     setTotal(computeTotal(cart));
-  }, [discountAmount]);
+  }, [discountAmount, user]);
 
   const updateCart = (updatedCart) => {
     setCartItems(updatedCart);
-    localStorage.setItem("cart", JSON.stringify(updatedCart));
+    writeCart(user, updatedCart);
     setTotal(computeTotal(updatedCart));
   };
 
@@ -47,7 +55,7 @@ export default function CartPage() {
   };
 
   const applyDiscount = () => {
-    if (discountCode.toUpperCase() === "FRANCISPOGI") {
+   if (discountCode.toUpperCase() === "FRANCISPOGI") {
       const subtotal = cartItems.reduce(
         (acc, item) => acc + item.price * (item.quantity || 1),
         0,
@@ -59,11 +67,33 @@ export default function CartPage() {
       setDiscountAmount(0);
       showToast("Invalid discount code");
       setTotal(computeTotal(cartItems));
-    }
+   }
+  };
+
+  const isCheckoutFormValid =
+    checkoutDetails.fullName.trim() &&
+    checkoutDetails.phone.trim() &&
+    checkoutDetails.address.trim() &&
+    checkoutDetails.city.trim() &&
+    checkoutDetails.province.trim() &&
+    checkoutDetails.zipCode.trim() &&
+    checkoutDetails.paymentMethod.trim();
+  const canCheckout = Boolean(user);
+
+  const handleDetailsChange = (field, value) => {
+    setCheckoutDetails((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
+    if (!user) {
+      showToast("Log in first to continue checkout.");
+      return;
+    }
+    if (!isCheckoutFormValid) {
+      showToast("Please complete delivery details and payment method.");
+      return;
+    }
 
     showToast("Checkout successful!");
 
@@ -76,19 +106,37 @@ export default function CartPage() {
     });
 
     // Clear cart after checkout
-    localStorage.removeItem("cart");
+    clearCart(user);
     setCartItems([]);
     setTotal(0);
     setDiscountAmount(0);
     setDiscountCode("");
+    setCheckoutDetails({
+      fullName: "",
+      phone: "",
+      address: "",
+      city: "",
+      province: "",
+      zipCode: "",
+      paymentMethod: "",
+    });
   };
 
   const handleClearCart = () => {
-    localStorage.removeItem("cart");
+    clearCart(user);
     setCartItems([]);
     setTotal(0);
     setDiscountAmount(0);
     setDiscountCode("");
+    setCheckoutDetails({
+      fullName: "",
+      phone: "",
+      address: "",
+      city: "",
+      province: "",
+      zipCode: "",
+      paymentMethod: "",
+    });
     showToast("Cart cleared!");
   };
 
@@ -96,6 +144,7 @@ export default function CartPage() {
     <div className="flex flex-col lg:flex-row max-w-7xl mx-auto p-6 gap-6">
       {/* Cart Items */}
       <div className="flex-1 space-y-4">
+        <BackButton fallbackTo="/products" label="Back" />
         <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
 
         {cartItems.length === 0 ? (
@@ -149,6 +198,70 @@ export default function CartPage() {
         <div className="lg:w-96 bg-white rounded-2xl p-6 shadow-lg sticky top-6 h-fit">
           <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
 
+          <div className="mb-5">
+            <h3 className="font-semibold mb-2">Delivery Details</h3>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={checkoutDetails.fullName}
+                onChange={(e) => handleDetailsChange("fullName", e.target.value)}
+                placeholder="Full Name"
+                className="w-full border border-gray-300 rounded px-2 py-2"
+              />
+              <input
+                type="text"
+                value={checkoutDetails.phone}
+                onChange={(e) => handleDetailsChange("phone", e.target.value)}
+                placeholder="Phone Number"
+                className="w-full border border-gray-300 rounded px-2 py-2"
+              />
+              <input
+                type="text"
+                value={checkoutDetails.address}
+                onChange={(e) => handleDetailsChange("address", e.target.value)}
+                placeholder="Street Address"
+                className="w-full border border-gray-300 rounded px-2 py-2"
+              />
+              <input
+                type="text"
+                value={checkoutDetails.city}
+                onChange={(e) => handleDetailsChange("city", e.target.value)}
+                placeholder="City / Municipality"
+                className="w-full border border-gray-300 rounded px-2 py-2"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={checkoutDetails.province}
+                  onChange={(e) =>
+                    handleDetailsChange("province", e.target.value)
+                  }
+                  placeholder="Province"
+                  className="w-full border border-gray-300 rounded px-2 py-2"
+                />
+                <input
+                  type="text"
+                  value={checkoutDetails.zipCode}
+                  onChange={(e) => handleDetailsChange("zipCode", e.target.value)}
+                  placeholder="ZIP Code"
+                  className="w-full border border-gray-300 rounded px-2 py-2"
+                />
+              </div>
+              <select
+                value={checkoutDetails.paymentMethod}
+                onChange={(e) =>
+                  handleDetailsChange("paymentMethod", e.target.value)
+                }
+                className="w-full border border-gray-300 rounded px-2 py-2 bg-white"
+              >
+                <option value="">Select Payment Method</option>
+                <option value="Cash on Delivery">Cash on Delivery</option>
+                <option value="GCash">GCash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+          </div>
+
           {/* Discount code */}
           <div className="mb-4">
             <label className="block mb-1 font-medium">Discount Code</label>
@@ -199,11 +312,22 @@ export default function CartPage() {
 
           {/* Checkout + Clear Cart Buttons */}
           <div className="flex flex-col gap-3">
+            {!user && (
+              <p className="text-sm font-medium text-red-600">
+                Log in first before checkout.
+              </p>
+            )}
+            {user && !isCheckoutFormValid && (
+              <p className="text-sm font-medium text-amber-700">
+                Complete delivery details and payment method to place order.
+              </p>
+            )}
             <button
               onClick={handleCheckout}
-              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition"
+              disabled={!canCheckout}
+              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Continue to Checkout
+              {user ? "Continue to Checkout" : "Log in first"}
             </button>
 
             <button

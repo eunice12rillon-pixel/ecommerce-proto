@@ -10,57 +10,77 @@ import {
 
 export default function ContactUs() {
   return (
-    <footer className="bg-white shadow-md text-black py-10">
-      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Social Media */}
-        <div className="flex flex-col space-y-4 items-start">
-          <h3 className="text-lg font-semibold">Follow Us</h3>
-          <div className="flex space-x-4">
-            <a href="https://www.facebook.com" target="_blank" rel="noreferrer">
-              <div className="bg-blue-600 text-white p-3 rounded-full hover:scale-110 transition-transform">
-                <FaFacebookF size={20} />
-              </div>
-            </a>
-            <a
-              href="https://www.instagram.com"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <div className="bg-pink-500 text-white p-3 rounded-full hover:scale-110 transition-transform">
-                <FaInstagram size={20} />
-              </div>
-            </a>
+    <footer className="relative overflow-hidden py-14">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="rounded-3xl border border-orange-100 bg-gradient-to-br from-orange-50 via-white to-amber-50 shadow-xl p-6 md:p-10">
+          <div className="mb-8">
+            <p className="text-sm font-semibold tracking-wide text-orange-600 uppercase">
+              Contact Us
+            </p>
+            <h2 className="mt-2 text-3xl md:text-4xl font-bold text-gray-900">
+              Let&apos;s Create Something Beautiful Together
+            </h2>
+            <p className="mt-3 text-gray-600 max-w-2xl">
+              Questions about orders, seller support, or partnerships? Reach out
+              anytime. Our Artisan Alley team is ready to help.
+            </p>
           </div>
-        </div>
 
-        {/* Contact Info */}
-        <div className="flex flex-col space-y-4">
-          <h3 className="text-lg font-semibold">Contact Us</h3>
-          <div className="flex items-center space-x-3">
-            <div className="bg-green-500 text-white p-3 rounded-full">
-              <FaPhone size={18} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-2xl bg-white/90 border border-gray-100 p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-green-500 text-white flex items-center justify-center">
+                <FaPhone size={16} />
+              </div>
+              <h3 className="mt-3 font-semibold text-gray-900">Call Us</h3>
+              <p className="text-sm text-gray-600 mt-1">(+63) 912 345 6789</p>
+              <p className="text-sm text-gray-600">(+63) 2 8123 4567</p>
             </div>
-            <div className="flex flex-col text-sm">
-              <span>(632) 87465873443638465</span>
-              <span>(639) 87346587436734</span>
-            </div>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="bg-yellow-500 text-white p-3 rounded-full">
-              <FaEnvelope size={18} />
-            </div>
-            <span className="text-sm">hellojdfngjdfnjk</span>
-          </div>
-        </div>
 
-        {/* Location */}
-        <div className="flex flex-col space-y-4">
-          <h3 className="text-lg font-semibold">Location</h3>
-          <div className="flex items-center space-x-3">
-            <div className="bg-red-500 text-white p-3 rounded-full">
-              <FaMapMarkerAlt size={18} />
+            <div className="rounded-2xl bg-white/90 border border-gray-100 p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-yellow-500 text-white flex items-center justify-center">
+                <FaEnvelope size={16} />
+              </div>
+              <h3 className="mt-3 font-semibold text-gray-900">Email</h3>
+              <p className="text-sm text-gray-600 mt-1">support@artisanalley.ph</p>
+              <p className="text-sm text-gray-600">partners@artisanalley.ph</p>
             </div>
-            <span className="text-sm">disuhfijfdsgbkjdfhbg</span>
+
+            <div className="rounded-2xl bg-white/90 border border-gray-100 p-5 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-red-500 text-white flex items-center justify-center">
+                <FaMapMarkerAlt size={16} />
+              </div>
+              <h3 className="mt-3 font-semibold text-gray-900">Visit</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Makati City, Metro Manila, Philippines
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/90 border border-gray-100 p-5 shadow-sm">
+              <h3 className="font-semibold text-gray-900">Follow Us</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Join our creative community and latest promos.
+              </p>
+              <div className="mt-4 flex gap-3">
+                <a
+                  href="https://www.facebook.com/artisanalleyph"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
+                  title="Visit our Facebook page"
+                >
+                  <FaFacebookF size={16} />
+                </a>
+                <a
+                  href="https://www.instagram.com/artisanalleyph"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-10 h-10 rounded-full bg-pink-500 text-white flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
+                  title="Visit our Instagram page"
+                >
+                  <FaInstagram size={16} />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </div>

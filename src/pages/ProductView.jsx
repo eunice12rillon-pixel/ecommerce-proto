@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useToast } from "../components/ToastContext";
+import BackButton from "../components/BackButton";
+import { readCart, writeCart } from "../utils/cartStorage";
 
-export default function ProductView({ products = [] }) {
+export default function ProductView({ products = [], user }) {
   const { id } = useParams();
   const { showToast } = useToast();
   const product = products[id];
@@ -11,17 +13,18 @@ export default function ProductView({ products = [] }) {
   if (!product) return <p className="text-gray-500 p-6">Product not found.</p>;
 
   const handleAddToCart = () => {
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const cart = readCart(user);
     const existing = cart.find((p) => p.id === product.id);
     if (existing) existing.quantity += quantity;
     else cart.push({ ...product, quantity });
-    localStorage.setItem("cart", JSON.stringify(cart));
+    writeCart(user, cart);
 
     showToast(`${product.name} successfully added to cart!`);
   };
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
+      <BackButton fallbackTo="/products" label="Back" />
       <div className="flex flex-col lg:flex-row gap-8">
         <div className="flex-1">
           <img
@@ -71,7 +74,7 @@ export default function ProductView({ products = [] }) {
             {products
               .filter((p) => p.id !== product.id)
               .slice(0, 3)
-              .map((p, idx) => (
+              .map((p) => (
                 <Link
                   key={p.id}
                   to={`/products/${products.indexOf(p)}`}

@@ -1,16 +1,17 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useToast } from "./ToastContext";
+import { readCart, writeCart } from "../utils/cartStorage";
 
-export default function ProductsGrid({ products = [] }) {
+export default function ProductsGrid({ products = [], user }) {
   const { showToast } = useToast();
 
   const handleAddToCart = (product) => {
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const cart = readCart(user);
     const existingIndex = cart.findIndex((item) => item.id === product.id);
     if (existingIndex !== -1) cart[existingIndex].quantity += 1;
     else cart.push({ ...product, quantity: 1 });
-    localStorage.setItem("cart", JSON.stringify(cart));
+    writeCart(user, cart);
 
     showToast(`${product.name} successfully added to cart!`);
   };

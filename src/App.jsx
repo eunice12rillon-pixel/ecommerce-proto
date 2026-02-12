@@ -16,7 +16,7 @@ import CategoriesGrid from "./components/CategoriesGrid";
 import Testimonial from "./components/Testimonial";
 import HowToBuy from "./components/HowToBuy";
 import ContactUs from "./components/ContactUs";
-import PageWrapper from "./components/PageWrapper";
+import SaleBadge from "./components/SaleBadge";
 
 import ProductsPage from "./pages/ProductsPage";
 import ProductView from "./pages/ProductView";
@@ -28,10 +28,14 @@ import Profile from "./pages/Profiles";
 import Signup from "./pages/Signup";
 
 function App() {
+  const getSaleBadgeHiddenKey = (sessionUser) =>
+    `saleBadgeHidden_${sessionUser?.id || "guest"}`;
+
   const [user, setUser] = React.useState(null);
   const [role, setRole] = React.useState("customer");
   const [authResolved, setAuthResolved] = React.useState(false);
   const [products, setProducts] = React.useState([]);
+  const [, setSaleBadgeRefresh] = React.useState(0);
 
   const slides = [
     { image: "/img1.jpg", quote: "Art is the heartbeat of our local culture." },
@@ -212,6 +216,15 @@ function App() {
     localStorage.removeItem("userRole");
   };
 
+  const handleDismissSaleBadge = () => {
+    const hiddenKey = getSaleBadgeHiddenKey(user);
+    localStorage.setItem(hiddenKey, "true");
+    setSaleBadgeRefresh((value) => value + 1);
+  };
+
+  const saleBadgeVisible =
+    localStorage.getItem(getSaleBadgeHiddenKey(user)) !== "true";
+
   if (!authResolved) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -227,6 +240,9 @@ return (
   <ToastProvider>
     <Router>
       <Header user={user} onLogout={handleLogout} role={role} />
+      {role !== "admin" && saleBadgeVisible && (
+        <SaleBadge onClose={handleDismissSaleBadge} />
+      )}
 
       <Routes>
         {/* HOME PAGE - Only for customers */}
@@ -239,17 +255,55 @@ return (
                 <InfoGrid />
 
                 <div className="max-w-7xl mx-auto px-4 py-8">
-                  <ProductsGrid products={hardcodedProducts.slice(0, 4)} />
+                  <ProductsGrid
+                    products={hardcodedProducts.slice(0, 8)}
+                    user={user}
+                  />
                 </div>
 
                 <CategoriesGrid />
                 <Testimonial />
                 <HowToBuy />
-                <PageWrapper>
-                  <div className="mt-6">
-                    <p>Welcome to Artisan Alley!</p>
+
+                <section className="max-w-7xl mx-auto px-4 py-10">
+                  <div className="bg-white/90 rounded-2xl shadow-md p-6 md:p-10 space-y-6">
+                    <div className="space-y-3">
+                      <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                        Buy and Sell Online on Artisan Alley Philippines
+                      </h2>
+                      <p className="text-gray-700 leading-relaxed">
+                        Artisan Alley is a fun, free, and trusted online marketplace for art supplies, crafts, and handmade products. We connect Filipino artists, crafters, and creative sellers with buyers who love unique and high-quality items.
+                      </p>
+                      <p className="text-gray-700 leading-relaxed">
+                        Shop safely and easily with trusted sellers and verified listings. Discover a wide variety of products from art materials, craft tools, DIY kits, handmade accessories, home decor, and more. Create listings for free and start selling your creations in just a few clicks!
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="text-xl md:text-2xl font-semibold text-gray-900">
+                        Experience Creative Shopping on Artisan Alley
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed">
+                        Find everything you need for your art and craft projects at the best prices. Browse products, compare shop ratings, and read reviews to make worry-free purchases. Whether you are a student, hobbyist, or professional artist, Artisan Alley has something for you.
+                      </p>
+                      <p className="text-gray-700 leading-relaxed">
+                        Enjoy special deals, discounts, and promotions all year round. Get the best value with affordable prices and exciting offers from your favorite local creators.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h3 className="text-xl md:text-2xl font-semibold text-gray-900">
+                        Sell Your Crafts Easily
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed">
+                        Listing products on Artisan Alley is quick and simple. Manage orders, connect with customers, and grow your creative business online all in one platform.
+                      </p>
+                      <p className="text-gray-900 font-semibold">
+                        So what are you waiting for? Join Artisan Alley today and be part of a growing creative community!
+                      </p>
+                    </div>
                   </div>
-                </PageWrapper>
+                </section>
                 <ContactUs />
               </>
             }
@@ -262,7 +316,7 @@ return (
         {role !== "admin" && (
           <Route
             path="/products"
-            element={<ProductsPage products={products} />}
+            element={<ProductsPage products={products} user={user} />}
           />
         )}
 
@@ -270,12 +324,12 @@ return (
         {role !== "admin" && (
           <Route
             path="/products/:id"
-            element={<ProductView products={products} />}
+            element={<ProductView products={products} user={user} />}
           />
         )}
 
         {/* CART PAGE - Only for customers */}
-        {role !== "admin" && <Route path="/cart" element={<CartPage />} />}
+        {role !== "admin" && <Route path="/cart" element={<CartPage user={user} />} />}
 
         {/* PROFILE PAGE - Accessible to everyone (or restrict if needed) */}
         <Route path="/profile" element={<Profile user={user} />} />

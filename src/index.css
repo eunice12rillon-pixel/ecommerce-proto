@@ -14,7 +14,19 @@
 
 @layer base {
   body {
-    @apply bg-[#ffffff] text-foreground;
+    @apply text-foreground;
+    background-color: #ffffff;
+    background-image:
+      radial-gradient(circle at 8% 10%, rgba(244, 63, 94, 0.16) 0 26px, transparent 28px),
+      radial-gradient(circle at 18% 78%, rgba(234, 179, 8, 0.15) 0 22px, transparent 24px),
+      radial-gradient(circle at 34% 18%, rgba(59, 130, 246, 0.14) 0 18px, transparent 20px),
+      radial-gradient(circle at 52% 86%, rgba(16, 185, 129, 0.13) 0 20px, transparent 22px),
+      radial-gradient(circle at 66% 12%, rgba(249, 115, 22, 0.14) 0 24px, transparent 26px),
+      radial-gradient(circle at 82% 74%, rgba(168, 85, 247, 0.13) 0 20px, transparent 22px),
+      radial-gradient(circle at 94% 28%, rgba(14, 165, 233, 0.13) 0 18px, transparent 20px),
+      radial-gradient(circle at 72% 48%, rgba(236, 72, 153, 0.1) 0 15px, transparent 17px);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
   }
 }
 

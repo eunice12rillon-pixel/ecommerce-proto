@@ -1,10 +1,31 @@
 import React from "react";
 import { User, ShoppingCart } from "lucide-react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
 
 export default function Header({ user, onLogout, role }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleSearch = (query) => {
+    const searchText = query.trim();
+
+    if (!searchText) {
+      navigate("/", { replace: true });
+      return;
+    }
+
+    const params = new URLSearchParams(location.search);
+    params.set("search", searchText);
+
+    navigate(
+      {
+        pathname: "/products",
+        search: params.toString(),
+      },
+      { replace: true },
+    );
+  };
 
   return (
     <header className="h-20 bg-[#ffffff] shadow-md w-full flex items-center">
@@ -19,7 +40,7 @@ export default function Header({ user, onLogout, role }) {
 
         {/* Search bar */}
         <div className="w-1/3">
-          <SearchBar placeholder="Search artisans..." />
+          <SearchBar placeholder="Search products..." onSearch={handleSearch} />
         </div>
 
         <div className="flex items-center gap-4">

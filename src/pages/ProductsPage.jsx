@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useToast } from "../components/ToastContext";
+import BackButton from "../components/BackButton";
+import { readCart, writeCart } from "../utils/cartStorage";
 
-export default function ProductsPage({ products = [] }) {
+export default function ProductsPage({ products = [], user }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { showToast } = useToast();
-
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [priceFilter, setPriceFilter] = useState("All");
-  const [filteredProducts, setFilteredProducts] = useState(products);
 
   const categories = [
     "All",
@@ -23,51 +21,79 @@ export default function ProductsPage({ products = [] }) {
     "Furniture & Decor",
   ];
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const category = params.get("category");
-    const price = params.get("price");
-    setCategoryFilter(category || "All");
-    setPriceFilter(price || "All");
-  }, [location.search]);
+  const params = new URLSearchParams(location.search);
+  const categoryFilter = params.get("category") || "All";
+  const priceFilter = params.get("price") || "All";
+  const searchFilter = params.get("search") || "";
 
-  useEffect(() => {
-    let tempProducts = [...products];
+  const updateFilterParams = (updates) => {
+    const nextParams = new URLSearchParams(location.search);
 
-    if (categoryFilter !== "All")
-      tempProducts = tempProducts.filter((p) => p.category === categoryFilter);
+    Object.entries(updates).forEach(([key, value]) => {
+      const normalizedValue = typeof value === "string" ? value.trim() : value;
 
-    if (priceFilter !== "All") {
-      if (priceFilter === "Low")
-        tempProducts = tempProducts.filter((p) => p.price < 500);
-      if (priceFilter === "Medium")
-        tempProducts = tempProducts.filter(
-          (p) => p.price >= 500 && p.price < 1500,
-        );
-      if (priceFilter === "High")
-        tempProducts = tempProducts.filter((p) => p.price >= 1500);
+      if (!normalizedValue || normalizedValue === "All") {
+        nextParams.delete(key);
+      } else {
+        nextParams.set(key, normalizedValue);
+      }
+    });
+
+    navigate({ search: nextParams.toString() }, { replace: true });
+  };
+
+  let filteredProducts = [...products];
+
+  if (categoryFilter !== "All") {
+    filteredProducts = filteredProducts.filter(
+      (p) => p.category === categoryFilter,
+    );
+  }
+
+  if (priceFilter !== "All") {
+    if (priceFilter === "Low") {
+      filteredProducts = filteredProducts.filter((p) => p.price < 500);
     }
+    if (priceFilter === "Medium") {
+      filteredProducts = filteredProducts.filter(
+        (p) => p.price >= 500 && p.price < 1500,
+      );
+    }
+    if (priceFilter === "High") {
+      filteredProducts = filteredProducts.filter((p) => p.price >= 1500);
+    }
+  }
 
-    setFilteredProducts(tempProducts);
+  const normalizedSearch = searchFilter.trim().toLowerCase();
+  if (normalizedSearch) {
+    filteredProducts = filteredProducts.filter((p) => {
+      const name = p.name?.toLowerCase() || "";
+      const description = p.description?.toLowerCase() || "";
+      const category = p.category?.toLowerCase() || "";
 
-    const searchParams = new URLSearchParams();
-    if (categoryFilter !== "All") searchParams.set("category", categoryFilter);
-    if (priceFilter !== "All") searchParams.set("price", priceFilter);
-    navigate({ search: searchParams.toString() }, { replace: true });
-  }, [categoryFilter, priceFilter, products, navigate]);
+      return (
+        name.includes(normalizedSearch) ||
+        description.includes(normalizedSearch) ||
+        category.includes(normalizedSearch)
+      );
+    });
+  }
 
   const handleAddToCart = (product) => {
-    const cart = JSON.parse(localStorage.getItem("cart")) || [];
+    const cart = readCart(user);
     const existing = cart.find((p) => p.id === product.id);
     if (existing) existing.quantity = (existing.quantity || 1) + 1;
     else cart.push({ ...product, quantity: 1 });
-    localStorage.setItem("cart", JSON.stringify(cart));
+    writeCart(user, cart);
 
     showToast(`${product.name} successfully added to cart!`);
   };
 
   return (
     <div className="max-w-7xl mx-auto p-4">
+      <div className="mb-3">
+        <BackButton fallbackTo="/" label="Back" />
+      </div>
       <h1 className="text-3xl font-bold mb-4">All Products</h1>
       <div className="flex gap-6">
         {/* Filters Sidebar */}
@@ -77,7 +103,9 @@ export default function ProductsPage({ products = [] }) {
             <label className="block mb-1 font-medium">Category</label>
             <select
               value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+              onChange={(e) =>
+                updateFilterParams({ category: e.target.value })
+              }
               className="w-full border border-gray-300 rounded px-2 py-1"
             >
               {categories.map((cat, idx) => (
@@ -91,7 +119,7 @@ export default function ProductsPage({ products = [] }) {
             <label className="block mb-1 font-medium">Price</label>
             <select
               value={priceFilter}
-              onChange={(e) => setPriceFilter(e.target.value)}
+              onChange={(e) => updateFilterParams({ price: e.target.value })}
               className="w-full border border-gray-300 rounded px-2 py-1"
             >
               <option value="All">All Prices</option>

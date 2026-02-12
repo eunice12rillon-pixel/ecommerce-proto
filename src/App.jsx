@@ -219,7 +219,7 @@ function App() {
     };
   }, []);
 
-  // Fetch products from Supabase database and combine with hardcoded products
+  // Fetch products from Supabase database
   useEffect(() => {
     const fetchProducts = async () => {
       const { data, error } = await supabase
@@ -250,6 +250,10 @@ function App() {
       } else {
         // If there's an error or no database products, just use hardcoded ones
         setProducts(enrichedHardcodedProducts);
+
+        setProducts(formattedProducts);
+      } else {
+        setProducts([]);
       }
     };
 
@@ -320,6 +324,8 @@ return (
                 <div className="max-w-7xl mx-auto px-4 py-8">
                     <ProductsGrid
                     products={enrichedHardcodedProducts.slice(0, 8)}
+                  <ProductsGrid
+                    products={products.slice(0, 8)}
                     user={user}
                   />
                 </div>

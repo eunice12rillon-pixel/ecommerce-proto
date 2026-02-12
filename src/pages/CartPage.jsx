@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useToast } from "../components/ToastContext";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart, clearCart } from "../utils/cartStorage";
+import { supabase } from "../utils/supabase";
+import { logCartEvent } from "../utils/cartEvents";
 
 export default function CartPage({ user }) {
   const [cartItems, setCartItems] = useState([]);
@@ -42,15 +44,38 @@ export default function CartPage({ user }) {
 
   const handleQuantityChange = (index, delta) => {
     const updatedCart = [...cartItems];
+    const previousQuantity = Number(updatedCart[index].quantity || 1);
+
     if (!updatedCart[index].quantity) updatedCart[index].quantity = 1;
     updatedCart[index].quantity += delta;
     if (updatedCart[index].quantity < 1) updatedCart[index].quantity = 1;
+
+    logCartEvent({
+      user,
+      productId: updatedCart[index].id,
+      eventType: delta > 0 ? "add" : "remove",
+      quantity: Math.abs(delta),
+      previousQuantity,
+    });
+
     updateCart(updatedCart);
   };
 
   const handleRemoveItem = (index) => {
     const updatedCart = [...cartItems];
+    const removedItem = updatedCart[index];
     updatedCart.splice(index, 1);
+
+    if (removedItem) {
+      logCartEvent({
+        user,
+        productId: removedItem.id,
+        eventType: "remove",
+        quantity: Number(removedItem.quantity || 1),
+        previousQuantity: Number(removedItem.quantity || 1),
+      });
+    }
+
     updateCart(updatedCart);
   };
 
@@ -84,7 +109,7 @@ export default function CartPage({ user }) {
     setCheckoutDetails((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cartItems.length === 0) return;
     if (!user) {
       showToast("Log in first to continue checkout.");
@@ -93,6 +118,57 @@ export default function CartPage({ user }) {
     if (!isCheckoutFormValid) {
       showToast("Please complete delivery details and payment method.");
       return;
+    }
+
+    const subtotal = cartItems.reduce(
+      (acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 1),
+      0,
+    );
+    const orderTotal = Math.max(0, subtotal - discountAmount);
+
+    const { data: orderData, error: orderError } = await supabase
+      .from("orders")
+      .insert([
+        {
+          user_id: user.id,
+          total: orderTotal,
+        },
+      ])
+      .select("id")
+      .single();
+
+    if (orderError || !orderData?.id) {
+      console.error("Error creating order:", orderError);
+      showToast("Checkout failed. Could not save order.");
+      return;
+    }
+
+    if (cartItems.length > 0) {
+      const orderItemsPayload = cartItems.map((item) => {
+        const idAsString = String(item.id ?? "");
+        const isHardcoded = idAsString.startsWith("hardcoded-");
+
+        return {
+          order_id: orderData.id,
+          product_id: isHardcoded ? null : item.id,
+          quantity: Number(item.quantity || 1),
+          price: Number(item.price || 0),
+          product_name: item.name ?? null,
+          product_category: item.category ?? null,
+          product_image_url: item.image ?? null,
+        };
+      });
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(orderItemsPayload);
+
+      if (itemsError) {
+        console.error("Error creating order items:", itemsError);
+        showToast(
+          "Checkout saved, but some order items were not recorded correctly.",
+        );
+      }
     }
 
     showToast("Checkout successful!");

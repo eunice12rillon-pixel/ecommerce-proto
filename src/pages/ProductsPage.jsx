@@ -4,6 +4,7 @@ import { Star } from "lucide-react";
 import { useToast } from "../components/ToastContext";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart } from "../utils/cartStorage";
+import { logCartEvent } from "../utils/cartEvents";
 
 export default function ProductsPage({ products = [], user }) {
   const location = useLocation();
@@ -83,9 +84,18 @@ export default function ProductsPage({ products = [], user }) {
   const handleAddToCart = (product) => {
     const cart = readCart(user);
     const existing = cart.find((p) => p.id === product.id);
+    const previousQuantity = existing ? Number(existing.quantity || 1) : 0;
+
     if (existing) existing.quantity = (existing.quantity || 1) + 1;
     else cart.push({ ...product, quantity: 1 });
     writeCart(user, cart);
+    logCartEvent({
+      user,
+      productId: product.id,
+      eventType: "add",
+      quantity: 1,
+      previousQuantity,
+    });
 
     showToast(`${product.name} successfully added to cart!`);
   };

@@ -20,6 +20,8 @@ export default function CartPage({ user }) {
     paymentMethod: "",
   });
   const { showToast } = useToast();
+  const uuidPattern =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
   // Compute total dynamically
   const computeTotal = useCallback((items) => {
@@ -120,8 +122,56 @@ export default function CartPage({ user }) {
       return;
     }
 
-    const subtotal = cartItems.reduce(
-      (acc, item) => acc + Number(item.price || 0) * Number(item.quantity || 1),
+    const cartCandidates = cartItems.map((item) => ({
+      id: String(item.id ?? ""),
+      quantity: Number(item.quantity || 1),
+      price: Number(item.price || 0),
+    }));
+
+    const uuidCandidates = [
+      ...new Set(
+        cartCandidates
+          .map((item) => item.id)
+          .filter((id) => uuidPattern.test(id)),
+      ),
+    ];
+
+    if (uuidCandidates.length === 0) {
+      showToast("Cart items are invalid. Please re-add products before checkout.");
+      return;
+    }
+
+    const { data: existingProducts, error: productsError } = await supabase
+      .from("products")
+      .select("id")
+      .in("id", uuidCandidates);
+
+    if (productsError) {
+      console.error("Error validating cart products:", productsError);
+      showToast("Checkout failed. Could not validate cart items.");
+      return;
+    }
+
+    const validProductIds = new Set((existingProducts || []).map((p) => String(p.id)));
+    const checkoutItems = cartCandidates.filter((item) =>
+      validProductIds.has(item.id),
+    );
+    const validCartItems = cartItems.filter((item) =>
+      validProductIds.has(String(item.id ?? "")),
+    );
+
+    if (checkoutItems.length === 0) {
+      showToast("Products in your cart are no longer available.");
+      return;
+    }
+
+    if (checkoutItems.length < cartCandidates.length) {
+      updateCart(validCartItems);
+      showToast("Some unavailable items were skipped during checkout.");
+    }
+
+    const subtotal = checkoutItems.reduce(
+      (acc, item) => acc + item.price * item.quantity,
       0,
     );
     const orderTotal = Math.max(0, subtotal - discountAmount);
@@ -165,21 +215,13 @@ export default function CartPage({ user }) {
       console.error("Error saving delivery details:", deliveryError);
     }
 
-    if (cartItems.length > 0) {
-      const orderItemsPayload = cartItems.map((item) => {
-        const idAsString = String(item.id ?? "");
-        const isHardcoded = idAsString.startsWith("hardcoded-");
-
-        return {
-          order_id: orderData.id,
-          product_id: isHardcoded ? null : item.id,
-          quantity: Number(item.quantity || 1),
-          price: Number(item.price || 0),
-          product_name: item.name ?? null,
-          product_category: item.category ?? null,
-          product_image_url: item.image ?? null,
-        };
-      });
+    if (checkoutItems.length > 0) {
+      const orderItemsPayload = checkoutItems.map((item) => ({
+        order_id: orderData.id,
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      }));
 
       const { error: itemsError } = await supabase
         .from("order_items")

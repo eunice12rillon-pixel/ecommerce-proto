@@ -85,12 +85,56 @@ export default function AdminPage({ user, role }) {
   const [mostAddedToCart, setMostAddedToCart] = useState([]);
   const [productVariants, setProductVariants] = useState([]);
 
+  // Orders State
+  const [orders, setOrders] = useState([]);
+
+  // Messages State (dummy data)
+  const [messages] = useState([
+    {
+      id: 1,
+      customer: "John Doe",
+      email: "john@example.com",
+      subject: "Question about product",
+      preview: "Hi, I wanted to ask about the shipping time for...",
+      date: new Date(Date.now() - 2 * 60 * 60 * 1000),
+      unread: true,
+    },
+    {
+      id: 2,
+      customer: "Jane Smith",
+      email: "jane@example.com",
+      subject: "Order issue",
+      preview: "My order #1234 hasn't arrived yet. Can you...",
+      date: new Date(Date.now() - 5 * 60 * 60 * 1000),
+      unread: true,
+    },
+    {
+      id: 3,
+      customer: "Bob Johnson",
+      email: "bob@example.com",
+      subject: "Product feedback",
+      preview: "Just wanted to say the quality is amazing! Will...",
+      date: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      unread: false,
+    },
+    {
+      id: 4,
+      customer: "Alice Brown",
+      email: "alice@example.com",
+      subject: "Return request",
+      preview: "I would like to return item #5678 because...",
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      unread: false,
+    },
+  ]);
+
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     category: "",
     price: "",
     image_url: "",
+    stock: "",
   });
 
   const fetchProducts = async () => {
@@ -99,7 +143,16 @@ export default function AdminPage({ user, role }) {
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error) setProducts(data);
+    if (!error) setProducts(data || []);
+  };
+
+  const fetchOrders = async () => {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (!error) setOrders(data || []);
   };
 
   // Fetch Analytics Data
@@ -157,6 +210,13 @@ export default function AdminPage({ user, role }) {
       fetchProducts();
     } else if (activeSection === "analytics") {
       fetchAnalytics();
+    } else if (activeSection === "orders") {
+      fetchOrders();
+      fetchProducts();
+    } else if (activeSection === "overview") {
+      fetchProducts();
+    } else if (activeSection === "notifications") {
+      fetchProducts();
     }
   }, [activeSection]);
 
@@ -167,23 +227,37 @@ export default function AdminPage({ user, role }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const productData = {
+      name: formData.name,
+      description: formData.description,
+      category: formData.category,
+      price: Number(formData.price),
+      image_url: formData.image_url,
+      stock: Number(formData.stock),
+    };
+
     if (editingId) {
-      await supabase
+      const { error } = await supabase
         .from("products")
-        .update({
-          ...formData,
-          price: Number(formData.price),
-        })
+        .update(productData)
         .eq("id", editingId);
 
-      setEditingId(null);
+      if (error) {
+        console.error("Error updating product:", error);
+        alert("Error updating product: " + error.message);
+      } else {
+        alert("Product updated successfully!");
+        setEditingId(null);
+      }
     } else {
-      await supabase.from("products").insert([
-        {
-          ...formData,
-          price: Number(formData.price),
-        },
-      ]);
+      const { error } = await supabase.from("products").insert([productData]);
+
+      if (error) {
+        console.error("Error adding product:", error);
+        alert("Error adding product: " + error.message);
+      } else {
+        alert("Product added successfully!");
+      }
     }
 
     setFormData({
@@ -192,29 +266,224 @@ export default function AdminPage({ user, role }) {
       category: "",
       price: "",
       image_url: "",
+      stock: "",
     });
 
     fetchProducts();
   };
 
   const handleDelete = async (id) => {
-    await supabase.from("products").delete().eq("id", id);
-    fetchProducts();
+    if (!confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+
+    const { error } = await supabase.from("products").delete().eq("id", id);
+
+    if (error) {
+      console.error("Error deleting product:", error);
+      alert("Error deleting product: " + error.message);
+    } else {
+      alert("Product deleted successfully!");
+      fetchProducts();
+    }
   };
 
   const handleEdit = (product) => {
-    setFormData(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      price: product.price.toString(),
+      image_url: product.image_url,
+      stock: product.stock.toString(),
+    });
     setEditingId(product.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Get low stock products
+  const getLowStockProducts = () => {
+    return products.filter((p) => p.stock < 10);
   };
 
   const renderContent = () => {
+    // OVERVIEW SECTION
+    if (activeSection === "overview") {
+      const totalProducts = products.length;
+      const lowStockCount = getLowStockProducts().length;
+      const totalOrders = orders.length;
+      const unreadMessages = messages.filter((m) => m.unread).length;
+
+      return (
+        <div className="p-4 bg-white rounded shadow mt-4">
+          <h2 className="text-lg font-semibold mb-4">Dashboard Overview</h2>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-blue-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Total Products</h3>
+              <p className="text-2xl font-bold text-blue-700">
+                {totalProducts}
+              </p>
+            </div>
+            <div className="bg-red-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Low Stock Items</h3>
+              <p className="text-2xl font-bold text-red-700">{lowStockCount}</p>
+            </div>
+            <div className="bg-green-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Total Orders</h3>
+              <p className="text-2xl font-bold text-green-700">{totalOrders}</p>
+            </div>
+            <div className="bg-yellow-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Unread Messages</h3>
+              <p className="text-2xl font-bold text-yellow-700">
+                {unreadMessages}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Add Product Form */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Quick Add Product</h3>
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-3 p-4 bg-gray-50 rounded"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="Product Name"
+                  className="w-full border p-2 rounded"
+                  required
+                />
+
+                <input
+                  name="category"
+                  value={formData.category}
+                  onChange={handleChange}
+                  placeholder="Category"
+                  className="w-full border p-2 rounded"
+                  required
+                />
+
+                <input
+                  type="number"
+                  step="0.01"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="Price (₱)"
+                  className="w-full border p-2 rounded"
+                  required
+                />
+
+                <input
+                  type="number"
+                  name="stock"
+                  value={formData.stock}
+                  onChange={handleChange}
+                  placeholder="Stock Quantity"
+                  className="w-full border p-2 rounded"
+                  required
+                  min="0"
+                />
+
+                <input
+                  name="image_url"
+                  value={formData.image_url}
+                  onChange={handleChange}
+                  placeholder="Image URL"
+                  className="w-full border p-2 rounded"
+                  required
+                />
+
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleChange}
+                  placeholder="Description"
+                  className="w-full border p-2 rounded"
+                  rows="1"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800"
+              >
+                {editingId ? "Update Product" : "Add Product"}
+              </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setFormData({
+                      name: "",
+                      description: "",
+                      category: "",
+                      price: "",
+                      image_url: "",
+                      stock: "",
+                    });
+                  }}
+                  className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 ml-2"
+                >
+                  Cancel
+                </button>
+              )}
+            </form>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-3">Recent Activity</h3>
+            <div className="space-y-2">
+              {getLowStockProducts().length > 0 && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded">
+                  <p className="text-sm text-red-700">
+                    ⚠️ {getLowStockProducts().length} product(s) are running low
+                    on stock
+                  </p>
+                </div>
+              )}
+              {unreadMessages > 0 && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-500 p-3 rounded">
+                  <p className="text-sm text-yellow-700">
+                    📧 You have {unreadMessages} unread message(s)
+                  </p>
+                </div>
+              )}
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                <p className="text-sm text-blue-700">
+                  ✅ System is running smoothly
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // PRODUCTS SECTION
     if (activeSection === "products") {
       return (
         <div className="p-4 bg-white rounded shadow mt-4">
           <h2 className="text-lg font-semibold mb-4">Product Management</h2>
 
           {/* ADD / EDIT FORM */}
-          <form onSubmit={handleSubmit} className="space-y-3 mb-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-3 mb-6 p-4 bg-gray-50 rounded"
+          >
+            <h3 className="font-medium text-gray-700">
+              {editingId ? "Edit Product" : "Add New Product"}
+            </h3>
+
             <input
               name="name"
               value={formData.name}
@@ -230,6 +499,7 @@ export default function AdminPage({ user, role }) {
               onChange={handleChange}
               placeholder="Description"
               className="w-full border p-2 rounded"
+              rows="3"
               required
             />
 
@@ -237,17 +507,18 @@ export default function AdminPage({ user, role }) {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              placeholder="Category"
+              placeholder="Category (e.g., Art, Crafts, Accessories)"
               className="w-full border p-2 rounded"
               required
             />
 
             <input
               type="number"
+              step="0.01"
               name="price"
               value={formData.price}
               onChange={handleChange}
-              placeholder="Price"
+              placeholder="Price (₱)"
               className="w-full border p-2 rounded"
               required
             />
@@ -256,18 +527,53 @@ export default function AdminPage({ user, role }) {
               name="image_url"
               value={formData.image_url}
               onChange={handleChange}
-              placeholder="Image URL"
+              placeholder="Image URL (e.g., /pro1.jpg or https://...)"
               className="w-full border p-2 rounded"
               required
             />
 
-            <button className="bg-black text-white px-6 py-2 rounded">
-              {editingId ? "Update Product" : "Add Product"}
-            </button>
+            <input
+              type="number"
+              name="stock"
+              value={formData.stock}
+              onChange={handleChange}
+              placeholder="Stock Quantity"
+              className="w-full border p-2 rounded"
+              required
+              min="0"
+            />
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800"
+              >
+                {editingId ? "Update Product" : "Add Product"}
+              </button>
+
+              {editingId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingId(null);
+                    setFormData({
+                      name: "",
+                      description: "",
+                      category: "",
+                      price: "",
+                      image_url: "",
+                      stock: "",
+                    });
+                  }}
+                  className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
 
           {/* PRODUCT TABLE */}
-
           <div className="overflow-hidden rounded-lg border">
             <table className="w-full text-sm">
               <thead>
@@ -344,6 +650,190 @@ export default function AdminPage({ user, role }) {
         </div>
       );
     }
+
+    // ORDERS SECTION
+    if (activeSection === "orders") {
+      return (
+        <div className="p-4 bg-white rounded shadow mt-4">
+          <h2 className="text-lg font-semibold mb-4">Orders Management</h2>
+
+          {orders.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <p>No orders found.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 text-left">Order ID</th>
+                    <th className="p-2 text-left">Customer</th>
+                    <th className="p-2 text-left">Date</th>
+                    <th className="p-2 text-right">Total</th>
+                    <th className="p-2 text-center">Status</th>
+                    <th className="p-2 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id} className="border-t hover:bg-gray-50">
+                      <td className="p-2 text-xs">
+                        {order.id?.substring(0, 8)}...
+                      </td>
+                      <td className="p-2">
+                        {order.user_id?.substring(0, 8)}...
+                      </td>
+                      <td className="p-2 text-xs">
+                        {new Date(order.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="p-2 text-right">
+                        ₱{Number(order.total || 0).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-center">
+                        <span className="px-2 py-1 rounded text-xs bg-green-200 text-green-800">
+                          {order.status || "Pending"}
+                        </span>
+                      </td>
+                      <td className="p-2">
+                        <div className="flex gap-2 justify-center">
+                          <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">
+                            View
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // MESSAGES SECTION
+    if (activeSection === "messages") {
+      return (
+        <div className="p-4 bg-white rounded shadow mt-4">
+          <h2 className="text-lg font-semibold mb-4">Customer Messages</h2>
+
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`p-4 rounded-lg border ${
+                  message.unread
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-white border-gray-200"
+                } hover:shadow-md transition`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="font-semibold text-gray-800">
+                      {message.customer}
+                      {message.unread && (
+                        <span className="ml-2 px-2 py-1 text-xs bg-blue-500 text-white rounded">
+                          New
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-gray-500">{message.email}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {message.date.toLocaleString()}
+                  </span>
+                </div>
+                <h4 className="font-medium text-sm text-gray-700 mb-1">
+                  {message.subject}
+                </h4>
+                <p className="text-sm text-gray-600">{message.preview}</p>
+                <div className="mt-3 flex gap-2">
+                  <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">
+                    Reply
+                  </button>
+                  <button className="bg-gray-300 text-gray-700 px-3 py-1 rounded text-xs hover:bg-gray-400">
+                    Mark as Read
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // NOTIFICATIONS SECTION
+    if (activeSection === "notifications") {
+      const lowStockProducts = getLowStockProducts();
+
+      return (
+        <div className="p-4 bg-white rounded shadow mt-4">
+          <h2 className="text-lg font-semibold mb-4">Notifications</h2>
+
+          <div className="space-y-4">
+            {/* Low Stock Alerts */}
+            <div>
+              <h3 className="text-md font-semibold mb-3 text-red-700">
+                🔴 Low Stock Alerts
+              </h3>
+              {lowStockProducts.length === 0 ? (
+                <p className="text-gray-500">All products are well-stocked!</p>
+              ) : (
+                <div className="space-y-2">
+                  {lowStockProducts.map((product) => (
+                    <div
+                      key={product.id}
+                      className="bg-red-50 border-l-4 border-red-500 p-3 rounded flex justify-between items-center"
+                    >
+                      <div>
+                        <p className="font-medium text-red-800">
+                          {product.name}
+                        </p>
+                        <p className="text-sm text-red-600">
+                          Only {product.stock} left in stock - Restock needed!
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setActiveSection("products");
+                          handleEdit(product);
+                        }}
+                        className="bg-red-500 text-white px-4 py-2 rounded text-xs hover:bg-red-600"
+                      >
+                        Restock
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* System Notifications */}
+            <div>
+              <h3 className="text-md font-semibold mb-3 text-blue-700">
+                📢 System Notifications
+              </h3>
+              <div className="space-y-2">
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                  <p className="text-sm text-blue-700">
+                    ✅ All systems operational
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">2 hours ago</p>
+                </div>
+                <div className="bg-green-50 border-l-4 border-green-500 p-3 rounded">
+                  <p className="text-sm text-green-700">
+                    ✓ Backup completed successfully
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">1 day ago</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ANALYTICS SECTION
     if (activeSection === "analytics") {
       return (
         <div className="p-4 bg-white rounded shadow mt-4">
@@ -373,8 +863,12 @@ export default function AdminPage({ user, role }) {
                       <tr key={idx} className="border-t hover:bg-gray-50">
                         <td className="p-2">{product.name}</td>
                         <td className="p-2">{product.category}</td>
-                        <td className="p-2 text-right">{product.times_ordered}</td>
-                        <td className="p-2 text-right">{product.total_quantity_sold}</td>
+                        <td className="p-2 text-right">
+                          {product.times_ordered}
+                        </td>
+                        <td className="p-2 text-right">
+                          {product.total_quantity_sold}
+                        </td>
                         <td className="p-2 text-right">
                           ₱{Number(product.total_revenue || 0).toLocaleString()}
                         </td>
@@ -385,7 +879,6 @@ export default function AdminPage({ user, role }) {
               </div>
             )}
           </div>
-          
 
           {/* DAILY SALES */}
           <div className="mb-8">
@@ -409,15 +902,22 @@ export default function AdminPage({ user, role }) {
                   <tbody>
                     {dailySales.map((sale, idx) => (
                       <tr key={idx} className="border-t hover:bg-gray-50">
-                        <td className="p-2">{new Date(sale.date).toLocaleDateString()}</td>
+                        <td className="p-2">
+                          {new Date(sale.date).toLocaleDateString()}
+                        </td>
                         <td className="p-2 text-right">{sale.total_orders}</td>
                         <td className="p-2 text-right">
                           ₱{Number(sale.total_revenue || 0).toLocaleString()}
                         </td>
                         <td className="p-2 text-right">
-                          ₱{Number(sale.average_order_value || 0).toLocaleString()}
+                          ₱
+                          {Number(
+                            sale.average_order_value || 0,
+                          ).toLocaleString()}
                         </td>
-                        <td className="p-2 text-right">{sale.unique_customers}</td>
+                        <td className="p-2 text-right">
+                          {sale.unique_customers}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -448,14 +948,24 @@ export default function AdminPage({ user, role }) {
                   <tbody>
                     {cartAnalytics.map((analytics, idx) => (
                       <tr key={idx} className="border-t hover:bg-gray-50">
-                        <td className="p-2">{new Date(analytics.date).toLocaleDateString()}</td>
-                        <td className="p-2 text-right">{analytics.users_with_cart}</td>
-                        <td className="p-2 text-right">{analytics.total_cart_items}</td>
-                        <td className="p-2 text-right">
-                          {Number(analytics.avg_quantity_per_item || 0).toFixed(2)}
+                        <td className="p-2">
+                          {new Date(analytics.date).toLocaleDateString()}
                         </td>
                         <td className="p-2 text-right">
-                          {Number(analytics.avg_quantity_per_item || 0).toFixed(2)}
+                          {analytics.users_with_cart}
+                        </td>
+                        <td className="p-2 text-right">
+                          {analytics.total_cart_items}
+                        </td>
+                        <td className="p-2 text-right">
+                          {Number(analytics.avg_quantity_per_item || 0).toFixed(
+                            2,
+                          )}
+                        </td>
+                        <td className="p-2 text-right">
+                          {Number(analytics.avg_quantity_per_item || 0).toFixed(
+                            2,
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -489,7 +999,9 @@ export default function AdminPage({ user, role }) {
                         <td className="p-2">{item.name}</td>
                         <td className="p-2">{item.category}</td>
                         <td className="p-2 text-right">{item.times_added}</td>
-                        <td className="p-2 text-right">{item.total_quantity_added}</td>
+                        <td className="p-2 text-right">
+                          {item.total_quantity_added}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -523,21 +1035,35 @@ export default function AdminPage({ user, role }) {
                   <tbody>
                     {cartEvents.map((event, idx) => (
                       <tr key={idx} className="border-t hover:bg-gray-50">
-                        <td className="p-2 text-xs">{event.user_id?.substring(0, 8)}...</td>
-                        <td className="p-2 text-xs">{event.product_id?.substring(0, 8)}...</td>
-                        <td className="p-2 text-xs">{event.variant_id?.substring(0, 8) || 'N/A'}</td>
+                        <td className="p-2 text-xs">
+                          {event.user_id?.substring(0, 8)}...
+                        </td>
+                        <td className="p-2 text-xs">
+                          {event.product_id?.substring(0, 8)}...
+                        </td>
+                        <td className="p-2 text-xs">
+                          {event.variant_id?.substring(0, 8) || "N/A"}
+                        </td>
                         <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            event.event_type === 'add' ? 'bg-green-200' :
-                            event.event_type === 'remove' ? 'bg-red-200' :
-                            'bg-yellow-200'
-                          }`}>
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              event.event_type === "add"
+                                ? "bg-green-200"
+                                : event.event_type === "remove"
+                                  ? "bg-red-200"
+                                  : "bg-yellow-200"
+                            }`}
+                          >
                             {event.event_type}
                           </span>
                         </td>
                         <td className="p-2 text-right">{event.quantity}</td>
-                        <td className="p-2 text-right">{event.previous_quantity || 0}</td>
-                        <td className="p-2 text-xs">{event.session_id?.substring(0, 8)}...</td>
+                        <td className="p-2 text-right">
+                          {event.previous_quantity || 0}
+                        </td>
+                        <td className="p-2 text-xs">
+                          {event.session_id?.substring(0, 8)}...
+                        </td>
                         <td className="p-2 text-xs">
                           {new Date(event.created_at).toLocaleString()}
                         </td>
@@ -580,14 +1106,20 @@ export default function AdminPage({ user, role }) {
                           {variant.stock || 0}
                         </td>
                         <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            variant.stock > 20 ? 'bg-green-200 text-green-800' :
-                            variant.stock > 5 ? 'bg-yellow-200 text-yellow-800' :
-                            'bg-red-200 text-red-800'
-                          }`}>
-                            {variant.stock > 20 ? 'In Stock' :
-                             variant.stock > 5 ? 'Low Stock' :
-                             'Critical'}
+                          <span
+                            className={`px-2 py-1 rounded text-xs ${
+                              variant.stock > 20
+                                ? "bg-green-200 text-green-800"
+                                : variant.stock > 5
+                                  ? "bg-yellow-200 text-yellow-800"
+                                  : "bg-red-200 text-red-800"
+                            }`}
+                          >
+                            {variant.stock > 20
+                              ? "In Stock"
+                              : variant.stock > 5
+                                ? "Low Stock"
+                                : "Critical"}
                           </span>
                         </td>
                       </tr>

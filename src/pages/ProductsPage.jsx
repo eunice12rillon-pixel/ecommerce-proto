@@ -150,10 +150,13 @@ export default function ProductsPage({ products = [], user }) {
 
               return (
                 <div
-                  key={idx}
+                  key={product.id ?? idx}
                   className={`bg-white shadow-md rounded-lg p-4 flex flex-col border border-transparent ${randomHover}`}
                 >
-                  <Link to={`/products/${idx}`} className="flex-1">
+                  <Link
+                    to={`/products/${encodeURIComponent(product.id)}`}
+                    className="flex-1"
+                  >
                     <img
                       src={product.image}
                       alt={product.name}

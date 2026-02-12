@@ -25,6 +25,9 @@ export default function Header({ user, onLogout, role }) {
       },
       { replace: true },
     );
+  const handleLogout = async () => {
+    await onLogout();
+    navigate("/products", { replace: true });
   };
 
   return (
@@ -67,7 +70,7 @@ export default function Header({ user, onLogout, role }) {
           {/* Authentication Nav */}
           <nav>
             {user ? (
-              <button onClick={onLogout} className="logout-button">
+              <button onClick={handleLogout} className="logout-button">
                 Log Out
               </button>
             ) : (

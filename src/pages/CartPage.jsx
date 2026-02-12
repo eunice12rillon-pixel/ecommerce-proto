@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useToast } from "../components/ToastContext";
+import React, { useState, useEffect, useCallback } from "react";
+import { useToast } from "../components/toast-context";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart, clearCart } from "../utils/cartStorage";
 import { supabase } from "../utils/supabase";
@@ -22,19 +22,19 @@ export default function CartPage({ user }) {
   const { showToast } = useToast();
 
   // Compute total dynamically
-  const computeTotal = (items) => {
+  const computeTotal = useCallback((items) => {
     const subtotal = items.reduce(
       (acc, item) => acc + item.price * (item.quantity || 1),
       0,
     );
     return subtotal - discountAmount;
-  };
+  }, [discountAmount]);
 
   useEffect(() => {
     const cart = readCart(user);
     setCartItems(cart);
     setTotal(computeTotal(cart));
-  }, [discountAmount, user]);
+  }, [user, computeTotal]);
 
   const updateCart = (updatedCart) => {
     setCartItems(updatedCart);
@@ -330,7 +330,9 @@ export default function CartPage({ user }) {
                 }
                 className="w-full border border-gray-300 rounded px-2 py-2 bg-white"
               >
-                <option value="">Select Payment Method</option>
+                <option value="" disabled>
+                  Select Payment Method
+                </option>
                 <option value="Cash on Delivery">Cash on Delivery</option>
                 <option value="GCash">GCash</option>
               </select>

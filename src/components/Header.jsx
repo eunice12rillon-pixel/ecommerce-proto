@@ -29,7 +29,7 @@ export default function Header({ user, onLogout, role }) {
 
   const handleLogout = async () => {
     await onLogout();
-    navigate("/products", { replace: true });
+    navigate("/", { replace: true });
   };
 
   return (

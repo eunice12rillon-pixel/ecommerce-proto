@@ -1,7 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
-import { useToast } from "./ToastContext";
+import { useToast } from "./toast-context";
 import { readCart, writeCart } from "../utils/cartStorage";
 import { logCartEvent } from "../utils/cartEvents";
 

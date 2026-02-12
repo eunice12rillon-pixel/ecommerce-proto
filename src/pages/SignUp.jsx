@@ -5,7 +5,6 @@ import { FcGoogle } from "react-icons/fc";
 
 const SignUp = () => {
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -15,7 +14,6 @@ const SignUp = () => {
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        setUser(session.user);
         navigate("/", { replace: true });
       }
     };
@@ -27,7 +25,6 @@ const SignUp = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session?.user) {
-        setUser(session.user);
         navigate("/", { replace: true });
       }
     });

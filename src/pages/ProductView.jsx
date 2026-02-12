@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Star } from "lucide-react";
-import { useToast } from "../components/ToastContext";
+import { useToast } from "../components/toast-context";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart } from "../utils/cartStorage";
 import { logCartEvent } from "../utils/cartEvents";
+import { addSellerMessage } from "../utils/sellerMessages";
 
 export default function ProductView({ products = [], user }) {
   const { id } = useParams();
@@ -14,6 +15,8 @@ export default function ProductView({ products = [], user }) {
   const productByIndex = Number.isNaN(legacyIndex) ? null : products[legacyIndex];
   const product = productById ?? productByIndex;
   const [quantity, setQuantity] = useState(1);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessage, setChatMessage] = useState("");
 
   if (!product) return <p className="text-gray-500 p-6">Product not found.</p>;
 
@@ -34,6 +37,26 @@ export default function ProductView({ products = [], user }) {
     });
 
     showToast(`${product.name} successfully added to cart!`);
+  };
+
+  const handleSendSellerMessage = () => {
+    const message = chatMessage.trim();
+    if (!message) {
+      showToast("Type your message first.");
+      return;
+    }
+
+    addSellerMessage({
+      buyerName: user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Customer",
+      buyerEmail: user?.email || "customer@artisan-alley.local",
+      sellerName: product.sellerName,
+      productName: product.name,
+      content: message,
+    });
+
+    setChatMessage("");
+    setIsChatOpen(false);
+    showToast("Message sent to seller.");
   };
 
   const normalizedComments = (product.comments && product.comments.length > 0
@@ -124,7 +147,9 @@ export default function ProductView({ products = [], user }) {
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
-              {(product.sellerName || "A").charAt(0).toUpperCase()}
+              {(product.sellerAvatarLetter || product.sellerName || "A")
+                .charAt(0)
+                .toUpperCase()}
             </div>
             <div>
               <p className="font-semibold text-gray-900">
@@ -135,16 +160,45 @@ export default function ProductView({ products = [], user }) {
           </div>
           <button
             type="button"
-            onClick={() =>
-              showToast(
-                `Opening chat with ${product.sellerName || "Artisan Seller"}...`,
-              )
-            }
+            onClick={() => setIsChatOpen((value) => !value)}
             className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
           >
             Chat Seller
           </button>
         </div>
+        {isChatOpen && (
+          <div className="border border-blue-200 bg-blue-50 rounded-lg p-3">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Message to {product.sellerName || "Artisan Seller"}
+            </label>
+            <textarea
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              rows={3}
+              className="w-full border border-gray-300 rounded p-2 text-sm"
+              placeholder="Hi seller, is this item available?"
+            />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={handleSendSellerMessage}
+                className="px-3 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700"
+              >
+                Send
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChatOpen(false);
+                  setChatMessage("");
+                }}
+                className="px-3 py-2 rounded bg-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 p-5">

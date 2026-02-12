@@ -1,7 +1,7 @@
 import React from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { Star } from "lucide-react";
-import { useToast } from "../components/ToastContext";
+import { useToast } from "../components/toast-context";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart } from "../utils/cartStorage";
 import { logCartEvent } from "../utils/cartEvents";

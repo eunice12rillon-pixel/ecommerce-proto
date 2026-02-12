@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useToast } from "../components/ToastContext";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart } from "../utils/cartStorage";
+import { logCartEvent } from "../utils/cartEvents";
 
 export default function ProductView({ products = [], user }) {
   const { id } = useParams();
@@ -18,9 +19,18 @@ export default function ProductView({ products = [], user }) {
   const handleAddToCart = () => {
     const cart = readCart(user);
     const existing = cart.find((p) => p.id === product.id);
+    const previousQuantity = existing ? Number(existing.quantity || 1) : 0;
+
     if (existing) existing.quantity += quantity;
     else cart.push({ ...product, quantity });
     writeCart(user, cart);
+    logCartEvent({
+      user,
+      productId: product.id,
+      eventType: "add",
+      quantity,
+      previousQuantity,
+    });
 
     showToast(`${product.name} successfully added to cart!`);
   };

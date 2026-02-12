@@ -87,6 +87,7 @@ export default function AdminPage({ user, role }) {
 
   // Orders State
   const [orders, setOrders] = useState([]);
+  const [orderItems, setOrderItems] = useState([]);
 
   // Messages State (dummy data)
   const [messages] = useState([
@@ -137,6 +138,18 @@ export default function AdminPage({ user, role }) {
     stock: "",
   });
 
+  // Category options from CategoriesGrid
+  const categoryOptions = [
+    "Paints & Brushes",
+    "Canvases & Paper",
+    "Beads & Jewelry Making",
+    "Wood & Carving Tools",
+    "Eco-friendly Materials",
+    "Craft Kits",
+    "Handwoven Items",
+    "Furniture & Decor",
+  ];
+
   const fetchProducts = async () => {
     const { data, error } = await supabase
       .from("products")
@@ -153,6 +166,28 @@ export default function AdminPage({ user, role }) {
       .order("created_at", { ascending: false });
 
     if (!error) setOrders(data || []);
+
+    // Fetch order items (checkouts) with product details
+    const { data: itemsData, error: itemsError } = await supabase
+      .from("order_items")
+      .select(
+        `
+        *,
+        products (
+          name,
+          image_url,
+          category
+        ),
+        orders (
+          created_at,
+          total,
+          user_id
+        )
+      `,
+      )
+      .order("created_at", { ascending: false });
+
+    if (!itemsError) setOrderItems(itemsData || []);
   };
 
   // Fetch Analytics Data
@@ -215,6 +250,7 @@ export default function AdminPage({ user, role }) {
       fetchProducts();
     } else if (activeSection === "overview") {
       fetchProducts();
+      fetchOrders();
     } else if (activeSection === "notifications") {
       fetchProducts();
     }
@@ -359,14 +395,20 @@ export default function AdminPage({ user, role }) {
                   required
                 />
 
-                <input
+                <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  placeholder="Category"
                   className="w-full border p-2 rounded"
                   required
-                />
+                >
+                  <option value="">Select Category</option>
+                  {categoryOptions.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
 
                 <input
                   type="number"
@@ -374,8 +416,8 @@ export default function AdminPage({ user, role }) {
                   name="price"
                   value={formData.price}
                   onChange={handleChange}
-                  placeholder="Price (₱)"
-                  className="w-full border p-2 rounded"
+                  placeholder="Price "
+                  className="w-full border p-2 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
 
@@ -385,7 +427,7 @@ export default function AdminPage({ user, role }) {
                   value={formData.stock}
                   onChange={handleChange}
                   placeholder="Stock Quantity"
-                  className="w-full border p-2 rounded"
+                  className="w-full border p-2 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                   min="0"
                 />
@@ -503,14 +545,20 @@ export default function AdminPage({ user, role }) {
               required
             />
 
-            <input
+            <select
               name="category"
               value={formData.category}
               onChange={handleChange}
-              placeholder="Category (e.g., Art, Crafts, Accessories)"
               className="w-full border p-2 rounded"
               required
-            />
+            >
+              <option value="">Select Category</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
 
             <input
               type="number"
@@ -518,8 +566,8 @@ export default function AdminPage({ user, role }) {
               name="price"
               value={formData.price}
               onChange={handleChange}
-              placeholder="Price (₱)"
-              className="w-full border p-2 rounded"
+              placeholder="Price"
+              className="w-full border p-2 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               required
             />
 
@@ -538,7 +586,7 @@ export default function AdminPage({ user, role }) {
               value={formData.stock}
               onChange={handleChange}
               placeholder="Stock Quantity"
-              className="w-full border p-2 rounded"
+              className="w-full border p-2 rounded [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               required
               min="0"
             />
@@ -651,12 +699,113 @@ export default function AdminPage({ user, role }) {
       );
     }
 
-    // ORDERS SECTION
+    // ORDERS SECTION - Track Checkouts
     if (activeSection === "orders") {
       return (
         <div className="p-4 bg-white rounded shadow mt-4">
-          <h2 className="text-lg font-semibold mb-4">Orders Management</h2>
+          <h2 className="text-lg font-semibold mb-4">Orders & Checkouts</h2>
 
+          {/* Summary Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-purple-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Total Orders</h3>
+              <p className="text-2xl font-bold text-purple-700">
+                {orders.length}
+              </p>
+            </div>
+            <div className="bg-green-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Total Items Sold</h3>
+              <p className="text-2xl font-bold text-green-700">
+                {orderItems.reduce(
+                  (sum, item) => sum + (item.quantity || 0),
+                  0,
+                )}
+              </p>
+            </div>
+            <div className="bg-blue-100 p-4 rounded-lg">
+              <h3 className="text-sm text-gray-600">Total Revenue</h3>
+              <p className="text-2xl font-bold text-blue-700">
+                ₱
+                {orders
+                  .reduce((sum, order) => sum + Number(order.total || 0), 0)
+                  .toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          {/* Checkouts Table */}
+          <h3 className="text-md font-semibold mb-3">Recent Checkouts</h3>
+          {orderItems.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              <p>No checkouts found.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-lg border">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 text-left">Image</th>
+                    <th className="p-2 text-left">Product</th>
+                    <th className="p-2 text-left">Category</th>
+                    <th className="p-2 text-right">Quantity</th>
+                    <th className="p-2 text-right">Price</th>
+                    <th className="p-2 text-right">Subtotal</th>
+                    <th className="p-2 text-left">Customer</th>
+                    <th className="p-2 text-left">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderItems.map((item) => (
+                    <tr key={item.id} className="border-t hover:bg-gray-50">
+                      <td className="p-2">
+                        {(item.products?.image_url || item.product_image_url) && (
+                          <img
+                            src={item.products?.image_url || item.product_image_url}
+                            alt={item.products?.name || item.product_name || "Product"}
+                            className="w-12 h-12 object-cover rounded"
+                            onError={(e) => {
+                              e.target.src = "/placeholder.jpg";
+                            }}
+                          />
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <div className="font-medium">
+                          {item.products?.name || item.product_name || "Unknown Product"}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Order: {item.order_id?.substring(0, 8)}...
+                        </div>
+                      </td>
+                      <td className="p-2">
+                        {item.products?.category || item.product_category || "N/A"}
+                      </td>
+                      <td className="p-2 text-right font-medium">
+                        {item.quantity}
+                      </td>
+                      <td className="p-2 text-right">
+                        ₱{Number(item.price).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-right font-semibold">
+                        ₱{(item.price * item.quantity).toFixed(2)}
+                      </td>
+                      <td className="p-2 text-xs">
+                        {item.orders?.user_id?.substring(0, 8)}...
+                      </td>
+                      <td className="p-2 text-xs">
+                        {item.orders?.created_at
+                          ? new Date(item.orders.created_at).toLocaleString()
+                          : "N/A"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Orders Summary */}
+          <h3 className="text-md font-semibold mb-3 mt-8">Orders Summary</h3>
           {orders.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
               <p>No orders found.</p>
@@ -677,27 +826,27 @@ export default function AdminPage({ user, role }) {
                 <tbody>
                   {orders.map((order) => (
                     <tr key={order.id} className="border-t hover:bg-gray-50">
-                      <td className="p-2 text-xs">
+                      <td className="p-2 text-xs font-mono">
                         {order.id?.substring(0, 8)}...
                       </td>
-                      <td className="p-2">
+                      <td className="p-2 text-xs">
                         {order.user_id?.substring(0, 8)}...
                       </td>
                       <td className="p-2 text-xs">
                         {new Date(order.created_at).toLocaleDateString()}
                       </td>
-                      <td className="p-2 text-right">
+                      <td className="p-2 text-right font-semibold">
                         ₱{Number(order.total || 0).toFixed(2)}
                       </td>
                       <td className="p-2 text-center">
                         <span className="px-2 py-1 rounded text-xs bg-green-200 text-green-800">
-                          {order.status || "Pending"}
+                          {order.status || "Completed"}
                         </span>
                       </td>
                       <td className="p-2">
                         <div className="flex gap-2 justify-center">
                           <button className="bg-blue-500 text-white px-3 py-1 rounded text-xs hover:bg-blue-600">
-                            View
+                            View Details
                           </button>
                         </div>
                       </td>

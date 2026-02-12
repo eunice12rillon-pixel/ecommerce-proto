@@ -43,74 +43,6 @@ function App() {
     { image: "/img3.jpg", quote: "Creativity connects communities." },
   ];
 
-  // Hardcoded products that will always be available
-  const hardcodedProducts = [
-    {
-      id: "hardcoded-1",
-      image: "/paint-brush.webp",
-      name: "Premium Paint Brush Set",
-      description: "High-quality brushes for watercolor, acrylic & oil.",
-      category: "Painting Tools",
-      price: 550,
-    },
-    {
-      id: "hardcoded-2",
-      image: "/acrylic-set.webp",
-      name: "Acrylic Paint Set",
-      description: "Vibrant acrylic paints perfect for beginners & pros.",
-      category: "Painting Tools",
-      price: 799,
-    },
-    {
-      id: "hardcoded-3",
-      image: "/canvas-pack.webp",
-      name: "Canvas Panel Pack",
-      description: "Durable canvas panels for creative projects.",
-      category: "Canvas & Surfaces",
-      price: 650,
-    },
-    {
-      id: "hardcoded-4",
-      image: "/sketchbook.webp",
-      name: "Hardbound Sketchbook",
-      description: "Premium thick paper for sketching & drawing.",
-      category: "Paper & Sketch",
-      price: 450,
-    },
-    {
-      id: "hardcoded-5",
-      image: "/watercolor-set.webp",
-      name: "Watercolor Paint Set",
-      description: "Rich pigments with smooth blending capability.",
-      category: "Painting Tools",
-      price: 720,
-    },
-    {
-      id: "hardcoded-6",
-      image: "/palette.webp",
-      name: "Wooden Paint Palette",
-      description: "Ergonomic wooden palette for easy mixing.",
-      category: "Accessories",
-      price: 299,
-    },
-    {
-      id: "hardcoded-7",
-      image: "/easel.webp",
-      name: "Adjustable Wooden Easel",
-      description: "Stable and adjustable easel for studio use.",
-      category: "Studio Equipment",
-      price: 1499,
-    },
-    {
-      id: "hardcoded-8",
-      image: "/charcoal-set.webp",
-      name: "Charcoal Drawing Set",
-      description: "Professional charcoal sticks for deep shading.",
-      category: "Drawing Tools",
-      price: 399,
-    },
-  ];
-
   useEffect(() => {
     let mounted = true;
 
@@ -162,7 +94,7 @@ function App() {
     };
   }, []);
 
-  // Fetch products from Supabase database and combine with hardcoded products
+  // Fetch products from Supabase database
   useEffect(() => {
     const fetchProducts = async () => {
       const { data, error } = await supabase
@@ -180,13 +112,10 @@ function App() {
           category: product.category,
           price: product.price,
         }));
-        
-        // Combine hardcoded products with database products
-        // Database products appear first (newest first), then hardcoded products
-        setProducts([...formattedProducts, ...hardcodedProducts]);
+
+        setProducts(formattedProducts);
       } else {
-        // If there's an error or no database products, just use hardcoded ones
-        setProducts(hardcodedProducts);
+        setProducts([]);
       }
     };
 
@@ -256,7 +185,7 @@ return (
 
                 <div className="max-w-7xl mx-auto px-4 py-8">
                   <ProductsGrid
-                    products={hardcodedProducts.slice(0, 8)}
+                    products={products.slice(0, 8)}
                     user={user}
                   />
                 </div>

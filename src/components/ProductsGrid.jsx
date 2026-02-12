@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useToast } from "./ToastContext";
 import { readCart, writeCart } from "../utils/cartStorage";
+import { logCartEvent } from "../utils/cartEvents";
 
 export default function ProductsGrid({ products = [], user }) {
   const { showToast } = useToast();
@@ -9,9 +10,20 @@ export default function ProductsGrid({ products = [], user }) {
   const handleAddToCart = (product) => {
     const cart = readCart(user);
     const existingIndex = cart.findIndex((item) => item.id === product.id);
+    const previousQuantity =
+      existingIndex !== -1 ? Number(cart[existingIndex].quantity || 1) : 0;
+
     if (existingIndex !== -1) cart[existingIndex].quantity += 1;
     else cart.push({ ...product, quantity: 1 });
+
     writeCart(user, cart);
+    logCartEvent({
+      user,
+      productId: product.id,
+      eventType: "add",
+      quantity: 1,
+      previousQuantity,
+    });
 
     showToast(`${product.name} successfully added to cart!`);
   };

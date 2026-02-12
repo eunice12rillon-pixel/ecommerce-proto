@@ -5,6 +5,10 @@ import SearchBar from "./SearchBar";
 
 export default function Header({ user, onLogout, role }) {
   const navigate = useNavigate();
+  const handleLogout = async () => {
+    await onLogout();
+    navigate("/products", { replace: true });
+  };
 
   return (
     <header className="h-20 bg-[#ffffff] shadow-md w-full flex items-center">
@@ -46,7 +50,7 @@ export default function Header({ user, onLogout, role }) {
           {/* Authentication Nav */}
           <nav>
             {user ? (
-              <button onClick={onLogout} className="logout-button">
+              <button onClick={handleLogout} className="logout-button">
                 Log Out
               </button>
             ) : (

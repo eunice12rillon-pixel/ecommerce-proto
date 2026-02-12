@@ -38,10 +38,13 @@ export default function ProductsGrid({ products = [] }) {
 
           return (
             <div
-              key={index}
+              key={product.id ?? index}
               className={`bg-white shadow-md rounded-lg p-4 transition-all duration-200 flex flex-col border border-transparent ${randomHover}`}
             >
-              <Link to={`/products/${index}`} className="flex-1">
+              <Link
+                to={`/products/${encodeURIComponent(product.id)}`}
+                className="flex-1"
+              >
                 <img
                   src={product.image}
                   alt={product.name}

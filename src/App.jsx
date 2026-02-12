@@ -280,8 +280,17 @@ return (
         {/* PROFILE PAGE - Accessible to everyone (or restrict if needed) */}
         <Route path="/profile" element={<Profile user={user} />} />
 
-        {/* ADMIN PAGE - Only for admins (already handled in AdminPage.jsx) */}
-        <Route path="/admin" element={<AdminPage user={user} role={role} />} />
+        {/* ADMIN PAGE - Strictly protected at route level */}
+        <Route
+          path="/admin"
+          element={
+            role === "admin" ? (
+              <AdminPage user={user} role={role} />
+            ) : (
+              <Navigate to="/productspage" replace />
+            )
+          }
+        />
 
         {/* LOGIN/SIGNUP - Accessible to everyone */}
         <Route path="/login" element={<Login />} />
@@ -291,6 +300,8 @@ return (
         <Route 
           path="*" 
           element={<Navigate to={role === "admin" ? "/admin" : "/"} replace />} 
+
+
         />
       </Routes>
     </Router>

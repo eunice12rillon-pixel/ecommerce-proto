@@ -5,7 +5,10 @@ import { useToast } from "../components/ToastContext";
 export default function ProductView({ products = [] }) {
   const { id } = useParams();
   const { showToast } = useToast();
-  const product = products[id];
+  const productById = products.find((p) => String(p.id) === id);
+  const legacyIndex = Number.parseInt(id, 10);
+  const productByIndex = Number.isNaN(legacyIndex) ? null : products[legacyIndex];
+  const product = productById ?? productByIndex;
   const [quantity, setQuantity] = useState(1);
 
   if (!product) return <p className="text-gray-500 p-6">Product not found.</p>;
@@ -71,10 +74,10 @@ export default function ProductView({ products = [] }) {
             {products
               .filter((p) => p.id !== product.id)
               .slice(0, 3)
-              .map((p, idx) => (
+              .map((p) => (
                 <Link
                   key={p.id}
-                  to={`/products/${products.indexOf(p)}`}
+                  to={`/products/${encodeURIComponent(p.id)}`}
                   className="bg-white shadow-md rounded-xl p-4 hover:shadow-xl transition flex flex-col"
                 >
                   <img

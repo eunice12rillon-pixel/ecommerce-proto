@@ -30,6 +30,48 @@ import Signup from "./pages/Signup";
 function App() {
   const getSaleBadgeHiddenKey = (sessionUser) =>
     `saleBadgeHidden_${sessionUser?.id || "guest"}`;
+  const getFallbackRating = (seedValue) => {
+    const seed = String(seedValue || "product");
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 31 + seed.charCodeAt(i)) % 100000;
+    }
+    const base = 4.3;
+    const step = (hash % 7) * 0.1;
+    return Number((base + step).toFixed(1));
+  };
+  const getFallbackSoldCount = (seedValue) => {
+    const seed = String(seedValue || "product");
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 37 + seed.charCodeAt(i)) % 100000;
+    }
+    return 20 + (hash % 480);
+  };
+  const getFallbackSellerName = (seedValue) => {
+    const sellers = [
+      "Maria's Art Shop",
+      "Craft Corner PH",
+      "Likhang Lokal",
+      "Studio Supply Hub",
+      "Handmade Finds",
+    ];
+    const seed = String(seedValue || "product");
+    let hash = 0;
+    for (let i = 0; i < seed.length; i += 1) {
+      hash = (hash * 41 + seed.charCodeAt(i)) % 100000;
+    }
+    return sellers[hash % sellers.length];
+  };
+  const getFallbackComments = (name) => [
+    "Good quality and sulit for the price.",
+    `I used this for my ${name?.toLowerCase() || "project"} and it worked great.`,
+    "Fast delivery and maayos kausap si seller.",
+  ];
+  const extendDescription = (text) =>
+    text && text.length > 85
+      ? text
+      : `${text} Great for students, hobbyists, and professional artists who want reliable results.`;
 
   const [user, setUser] = React.useState(null);
   const [role, setRole] = React.useState("customer");
@@ -52,6 +94,7 @@ function App() {
       description: "High-quality brushes for watercolor, acrylic & oil.",
       category: "Painting Tools",
       price: 550,
+      rating: 4.7,
     },
     {
       id: "hardcoded-2",
@@ -60,6 +103,7 @@ function App() {
       description: "Vibrant acrylic paints perfect for beginners & pros.",
       category: "Painting Tools",
       price: 799,
+      rating: 4.8,
     },
     {
       id: "hardcoded-3",
@@ -68,6 +112,7 @@ function App() {
       description: "Durable canvas panels for creative projects.",
       category: "Canvas & Surfaces",
       price: 650,
+      rating: 4.6,
     },
     {
       id: "hardcoded-4",
@@ -76,6 +121,7 @@ function App() {
       description: "Premium thick paper for sketching & drawing.",
       category: "Paper & Sketch",
       price: 450,
+      rating: 4.7,
     },
     {
       id: "hardcoded-5",
@@ -84,6 +130,7 @@ function App() {
       description: "Rich pigments with smooth blending capability.",
       category: "Painting Tools",
       price: 720,
+      rating: 4.9,
     },
     {
       id: "hardcoded-6",
@@ -92,6 +139,7 @@ function App() {
       description: "Ergonomic wooden palette for easy mixing.",
       category: "Accessories",
       price: 299,
+      rating: 4.5,
     },
     {
       id: "hardcoded-7",
@@ -100,6 +148,7 @@ function App() {
       description: "Stable and adjustable easel for studio use.",
       category: "Studio Equipment",
       price: 1499,
+      rating: 4.8,
     },
     {
       id: "hardcoded-8",
@@ -108,8 +157,16 @@ function App() {
       description: "Professional charcoal sticks for deep shading.",
       category: "Drawing Tools",
       price: 399,
+      rating: 4.6,
     },
   ];
+  const enrichedHardcodedProducts = hardcodedProducts.map((product) => ({
+    ...product,
+    description: extendDescription(product.description),
+    soldCount: getFallbackSoldCount(product.id),
+    sellerName: getFallbackSellerName(product.id),
+    comments: getFallbackComments(product.name),
+  }));
 
   useEffect(() => {
     let mounted = true;
@@ -176,17 +233,23 @@ function App() {
           id: product.id,
           image: product.image_url,
           name: product.name,
-          description: product.description,
+          description: extendDescription(product.description),
           category: product.category,
           price: product.price,
+          rating: Number(product.rating ?? getFallbackRating(product.id)),
+          soldCount: Number(product.sold_count ?? getFallbackSoldCount(product.id)),
+          sellerName: product.seller_name || getFallbackSellerName(product.id),
+          comments: Array.isArray(product.comments)
+            ? product.comments
+            : getFallbackComments(product.name),
         }));
         
         // Combine hardcoded products with database products
         // Database products appear first (newest first), then hardcoded products
-        setProducts([...formattedProducts, ...hardcodedProducts]);
+        setProducts([...formattedProducts, ...enrichedHardcodedProducts]);
       } else {
         // If there's an error or no database products, just use hardcoded ones
-        setProducts(hardcodedProducts);
+        setProducts(enrichedHardcodedProducts);
       }
     };
 
@@ -255,8 +318,8 @@ return (
                 <InfoGrid />
 
                 <div className="max-w-7xl mx-auto px-4 py-8">
-                  <ProductsGrid
-                    products={hardcodedProducts.slice(0, 8)}
+                    <ProductsGrid
+                    products={enrichedHardcodedProducts.slice(0, 8)}
                     user={user}
                   />
                 </div>

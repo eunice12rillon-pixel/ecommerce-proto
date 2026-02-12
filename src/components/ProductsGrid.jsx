@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { Star } from "lucide-react";
 import { useToast } from "./ToastContext";
 import { readCart, writeCart } from "../utils/cartStorage";
 
@@ -53,6 +54,13 @@ export default function ProductsGrid({ products = [], user }) {
                 />
                 <h3 className="font-semibold">{product.name}</h3>
                 <p className="text-gray-600 text-sm">{product.description}</p>
+                <div className="mt-2 flex items-center gap-3 text-sm font-medium text-gray-700">
+                  <span className="text-gray-500">
+                    {Number(product.soldCount ?? 0)} sold
+                  </span>
+                  <span>{Number(product.rating ?? 4.7).toFixed(1)}</span>
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                </div>
                 <p className="font-bold mt-2 text-lg">
                   ₱{product.price.toLocaleString()}
                 </p>

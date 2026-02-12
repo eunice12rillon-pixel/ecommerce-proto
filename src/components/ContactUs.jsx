@@ -61,24 +61,18 @@ export default function ContactUs() {
                 Join our creative community and latest promos.
               </p>
               <div className="mt-4 flex gap-3">
-                <a
-                  href="https://www.facebook.com/artisanalleyph"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
-                  title="Visit our Facebook page"
+                <div
+                  className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center"
+                  title="Facebook"
                 >
                   <FaFacebookF size={16} />
-                </a>
-                <a
-                  href="https://www.instagram.com/artisanalleyph"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-10 h-10 rounded-full bg-pink-500 text-white flex items-center justify-center hover:scale-105 transition-transform cursor-pointer"
-                  title="Visit our Instagram page"
+                </div>
+                <div
+                  className="w-10 h-10 rounded-full bg-pink-500 text-white flex items-center justify-center"
+                  title="Instagram"
                 >
                   <FaInstagram size={16} />
-                </a>
+                </div>
               </div>
             </div>
           </div>

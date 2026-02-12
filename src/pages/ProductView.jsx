@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { Star } from "lucide-react";
 import { useToast } from "../components/ToastContext";
 import BackButton from "../components/BackButton";
 import { readCart, writeCart } from "../utils/cartStorage";
@@ -25,6 +26,32 @@ export default function ProductView({ products = [], user }) {
     showToast(`${product.name} successfully added to cart!`);
   };
 
+  const normalizedComments = (product.comments && product.comments.length > 0
+    ? product.comments
+    : [
+        { buyerName: "Mika Santos", rating: 5, text: "Great item, good quality." },
+        {
+          buyerName: "John Reyes",
+          rating: 4.8,
+          text: "Seller is responsive and helpful.",
+        },
+      ]
+  ).map((comment, idx) => {
+    if (typeof comment === "string") {
+      const fallbackBuyers = ["Anna Cruz", "Paolo Dela Rosa", "Ivy Ramos"];
+      return {
+        buyerName: fallbackBuyers[idx % fallbackBuyers.length],
+        rating: Number((4.5 + (idx % 5) * 0.1).toFixed(1)),
+        text: comment,
+      };
+    }
+    return {
+      buyerName: comment.buyerName || `Buyer ${idx + 1}`,
+      rating: Number(comment.rating ?? 4.7),
+      text: comment.text || "Great product.",
+    };
+  });
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8">
       <BackButton fallbackTo="/products" label="Back" />
@@ -39,6 +66,19 @@ export default function ProductView({ products = [], user }) {
         <div className="flex-1 flex flex-col gap-4">
           <h1 className="text-3xl font-bold">{product.name}</h1>
           <p className="text-gray-600">{product.description}</p>
+          <div className="flex items-center gap-3 text-sm font-medium text-gray-700">
+            <span className="text-gray-500">
+              {Number(product.soldCount ?? 0)} sold
+            </span>
+            <span>{Number(product.rating ?? 4.7).toFixed(1)}</span>
+            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+          </div>
+          <p className="text-sm text-gray-600">
+            Seller:{" "}
+            <span className="font-semibold text-gray-800">
+              {product.sellerName || "Artisan Seller"}
+            </span>
+          </p>
           <p className="text-2xl font-bold">
             ₱{product.price.toLocaleString()}
           </p>
@@ -69,6 +109,59 @@ export default function ProductView({ products = [], user }) {
         </div>
       </div>
 
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <h2 className="text-xl font-semibold">Seller Profile</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-semibold">
+              {(product.sellerName || "A").charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">
+                {product.sellerName || "Artisan Seller"}
+              </p>
+              <p className="text-sm text-gray-600">Active seller</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              showToast(
+                `Opening chat with ${product.sellerName || "Artisan Seller"}...`,
+              )
+            }
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+          >
+            Chat Seller
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="text-xl font-semibold mb-3">Customer Comments</h2>
+        <div className="space-y-3">
+          {normalizedComments.map((comment, idx) => (
+            <div key={idx} className="rounded-lg bg-gray-50 p-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-semibold">
+                  {comment.buyerName.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-medium text-gray-900">{comment.buyerName}</p>
+                    <span className="text-sm text-gray-700">
+                      {Number(comment.rating).toFixed(1)}
+                    </span>
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  </div>
+                  <p className="text-sm text-gray-700">{comment.text}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Suggested Products */}
       {products.length > 1 && (
         <div>
@@ -90,12 +183,20 @@ export default function ProductView({ products = [], user }) {
                   />
                   <h3 className="font-semibold">{p.name}</h3>
                   <p className="text-gray-600 text-sm">{p.description}</p>
+                  <div className="mt-2 flex items-center gap-3 text-sm font-medium text-gray-700">
+                    <span className="text-gray-500">
+                      {Number(p.soldCount ?? 0)} sold
+                    </span>
+                    <span>{Number(p.rating ?? 4.7).toFixed(1)}</span>
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  </div>
                   <p className="font-bold mt-2">₱{p.price.toLocaleString()}</p>
                 </Link>
               ))}
           </div>
         </div>
       )}
+
     </div>
   );
 }

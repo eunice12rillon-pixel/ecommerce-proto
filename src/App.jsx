@@ -25,7 +25,7 @@ import CartPage from "./pages/CartPage";
 import AdminPage from "./pages/AdminPage";
 import Login from "./pages/Login";
 import Profile from "./pages/Profiles";
-import Signup from "./pages/Signup";
+import Signup from "./pages/SignUp";
 
 const HARDCODED_PRODUCTS = [];
 

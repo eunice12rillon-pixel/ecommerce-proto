@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../utils/supabase";
+import { FcGoogle } from "react-icons/fc";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -46,7 +47,7 @@ const Login = () => {
       .from("profiles")
       .select("role")
       .eq("id", signedInUser.id)
-      .single();
+      .maybeSingle();
 
     if (profileError) {
       alert("Error fetching profile: " + profileError.message);
@@ -60,6 +61,30 @@ const Login = () => {
     const targetRoute = userRole === "admin" ? "/admin" : "/";
     navigate(targetRoute, { replace: true });
     setLoading(false);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        alert(error.message);
+        setLoading(false);
+      }
+    } catch {
+      alert("An error occurred during sign in");
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -124,6 +149,25 @@ const Login = () => {
                   disabled={loading}
                 >
                   {loading ? "Logging in..." : "Login"}
+                </button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-4 bg-white text-gray-500">or</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 py-3 px-4 rounded-lg font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <FcGoogle size={24} />
+                  {loading ? "Signing in..." : "Sign in with Google"}
                 </button>
               </form>
             ) : (
